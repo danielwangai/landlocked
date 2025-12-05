@@ -20,4 +20,8 @@ pub mod landlocked {
     pub fn initialize(ctx: Context<InitializeLandRegistry>, admins: Vec<Pubkey>) -> Result<()> {
         initialize::handler(ctx, admins)
     }
+
+    pub fn confirm_admin_account(ctx: Context<ConfirmAdminAccount>) -> Result<()> {
+        confirm_admin_account::handler(ctx)
+    }
 }
