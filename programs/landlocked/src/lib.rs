@@ -1,4 +1,5 @@
 pub mod constants;
+pub mod contexts;
 pub mod error;
 pub mod instructions;
 pub mod state;
@@ -6,6 +7,7 @@ pub mod state;
 use anchor_lang::prelude::*;
 
 pub use constants::*;
+pub use contexts::*;
 pub use instructions::*;
 pub use state::*;
 
@@ -15,7 +17,7 @@ declare_id!("4AYNJr9c5E2MgtKd2RGsSdSRfEcLfNWm2og83MeFchYv");
 pub mod landlocked {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::handler(ctx)
+    pub fn initialize(ctx: Context<InitializeLandRegistry>, admins: Vec<Pubkey>) -> Result<()> {
+        initialize::handler(ctx, admins)
     }
 }
