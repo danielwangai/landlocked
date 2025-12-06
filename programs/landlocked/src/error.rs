@@ -4,4 +4,10 @@ use anchor_lang::prelude::*;
 pub enum ProtocolError {
     #[msg("Invalid admin account")]
     InvalidAdmin,
+    #[msg("Registrar already exists")]
+    RegistrarAlreadyExists,
+    #[msg("Registrar already confirmed")]
+    RegistrarAlreadyConfirmed,
+    #[msg("Invalid registrar account")]
+    InvalidRegistrar,
 }

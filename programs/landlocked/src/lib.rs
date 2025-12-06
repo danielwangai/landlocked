@@ -24,4 +24,18 @@ pub mod landlocked {
     pub fn confirm_admin_account(ctx: Context<ConfirmAdminAccount>) -> Result<()> {
         confirm_admin_account::handler(ctx)
     }
+
+    pub fn add_registrar(
+        ctx: Context<AddRegistrar>,
+        address: Pubkey,
+        first_name: String,
+        last_name: String,
+        id_number: String,
+    ) -> Result<()> {
+        registrar::add_registrar_handler(ctx, address, first_name, last_name, id_number)
+    }
+
+    pub fn confirm_registrar_account(ctx: Context<ConfirmRegistrarAccount>) -> Result<()> {
+        registrar::confirm_registrar_handler(ctx)
+    }
 }

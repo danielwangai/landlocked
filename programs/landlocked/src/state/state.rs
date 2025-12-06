@@ -23,3 +23,19 @@ pub struct Admin {
     pub authority: Pubkey,
     pub bump: u8,
 }
+
+/// Registrar accounts manage the land registry, land records and processes like land transfers
+#[account]
+#[derive(InitSpace)]
+pub struct Registrar {
+    #[max_len(20)]
+    pub first_name: String,
+    #[max_len(20)]
+    pub last_name: String,
+    #[max_len(15)]
+    pub id_number: String,
+    pub authority: Pubkey,
+    pub added_by: Pubkey,
+    pub is_active: bool,
+    pub bump: u8,
+}

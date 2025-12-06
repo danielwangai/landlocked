@@ -4,7 +4,7 @@ use crate::{contexts::ConfirmAdminAccount, error::ProtocolError, state::Protocol
 pub fn handler(ctx: Context<ConfirmAdminAccount>) -> Result<()> {
     // ensure that one admin cannot confirm an account of another admin
     // Validate that the authority is one of the predefined admins in protocol state
-    validate_admin(
+    is_admin(
         ctx.accounts.authority.key(),
         &ctx.accounts.protocol_state,
     )?;
@@ -17,7 +17,7 @@ pub fn handler(ctx: Context<ConfirmAdminAccount>) -> Result<()> {
     Ok(())
 }
 
-fn validate_admin(authority: Pubkey, protocol_state: &ProtocolState) -> Result<()> {
+pub fn is_admin(authority: Pubkey, protocol_state: &ProtocolState) -> Result<()> {
     require!(
         protocol_state.admins.contains(&authority),
         ProtocolError::InvalidAdmin
