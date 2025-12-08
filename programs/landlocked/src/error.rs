@@ -10,4 +10,6 @@ pub enum ProtocolError {
     RegistrarAlreadyConfirmed,
     #[msg("Invalid registrar account")]
     InvalidRegistrar,
+    #[msg("ID number already exists")]
+    DuplicateIdNumber,
 }

@@ -18,8 +18,7 @@ pub fn add_registrar_handler(
     registrar.authority = address;
     registrar.added_by = ctx.accounts.authority.key();
     registrar.is_active = false;
-    registrar.id_number = id_number.clone(); // Store id_number for verification
-                                             // Personal info will be set when registrar confirms
+    registrar.id_number = id_number.clone();
     registrar.first_name = first_name.clone();
     registrar.last_name = last_name.clone();
     registrar.bump = ctx.bumps.registrar;

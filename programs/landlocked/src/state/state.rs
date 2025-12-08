@@ -39,3 +39,28 @@ pub struct Registrar {
     pub is_active: bool,
     pub bump: u8,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct User {
+    pub bump: u8,
+    #[max_len(20)]
+    pub first_name: String,
+    #[max_len(20)]
+    pub last_name: String,
+    #[max_len(15)]
+    pub id_number: String,
+    #[max_len(15)]
+    pub phone_number: String,
+    pub authority: Pubkey,
+}
+
+/// Claim account to ensure id_number uniqueness globally
+/// Represents that a specific id_number is claimed by a person
+/// PDA: [b"id_number_claim", hash(id_number)]
+#[account]
+#[derive(InitSpace)]
+pub struct IdNumberClaim {
+    pub person: Pubkey, // The person account that owns this id_number
+    pub bump: u8,
+}

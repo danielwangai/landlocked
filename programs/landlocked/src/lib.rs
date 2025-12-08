@@ -38,4 +38,14 @@ pub mod landlocked {
     pub fn confirm_registrar_account(ctx: Context<ConfirmRegistrarAccount>) -> Result<()> {
         registrar::confirm_registrar_handler(ctx)
     }
+
+    pub fn create_user_account(
+        ctx: Context<CreateUserAccount>,
+        first_name: String,
+        last_name: String,
+        id_number: String,
+        phone_number: String,
+    ) -> Result<()> {
+        user::create_user_account_handler(ctx, first_name, last_name, id_number, phone_number)
+    }
 }

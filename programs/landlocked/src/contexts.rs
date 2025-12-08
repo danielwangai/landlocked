@@ -1,5 +1,8 @@
-use crate::{error::ProtocolError, state::ProtocolState, Admin, Registrar};
+use crate::{
+    Admin, Registrar, USER_SEED, User, error::ProtocolError, state::{IdNumberClaim, ProtocolState}
+};
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 
 // initialize the LandLocked land registry 🔒
 #[derive(Accounts)]
@@ -64,4 +67,36 @@ pub struct ConfirmRegistrarAccount<'info> {
     )]
     pub registrar: Account<'info, Registrar>,
     pub protocol_state: Account<'info, ProtocolState>,
+}
+
+#[derive(Accounts)]
+#[instruction(first_name: String, last_name: String, id_number: String, phone_number: String)]
+pub struct CreateUserAccount<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + User::INIT_SPACE,
+        seeds = [
+            USER_SEED.as_bytes(),
+            {hash(id_number.as_bytes()).to_bytes().as_ref()},
+            authority.key().as_ref()
+        ],
+        bump
+    )]
+    pub user: Account<'info, User>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + IdNumberClaim::INIT_SPACE,
+        seeds = [
+            "id_number_claim".as_bytes(),
+            {hash(id_number.as_bytes()).to_bytes().as_ref()}
+        ],
+        bump,
+        // If this claim already exists, init will fail, preventing duplicate id_numbers
+    )]
+    pub id_number_claim: Account<'info, IdNumberClaim>,
+    pub system_program: Program<'info, System>,
 }

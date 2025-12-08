@@ -3,6 +3,7 @@ import { Program } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import * as assert from "assert";
 import { Landlocked } from "../target/types/landlocked";
+import crypto from "crypto";
 
 describe("landlocked", () => {
   // Configure the client to use the local cluster.
@@ -328,6 +329,84 @@ describe("landlocked", () => {
     });
   });
 
+  describe("user accounts", () => {
+    const user1FirstName = "John";
+    const user1LastName = "Doe";
+    const user1IdNumber = "1234567890";
+    const user1PhoneNumber = "1234567890";
+    const user1 = anchor.web3.Keypair.generate();
+    let user1PDA: PublicKey;
+    let idNumberClaimPDA: PublicKey;
+
+    before(async () => {
+      // Compute PDAs inside before hook
+      user1PDA = getUserAddress(user1IdNumber, user1.publicKey);
+      idNumberClaimPDA = getIdNumberClaimPDA(user1IdNumber);
+
+      await airdrop(user1.publicKey, 1_000_000_000);
+      await program.methods
+        .createUserAccount(
+          user1FirstName,
+          user1LastName,
+          user1IdNumber,
+          user1PhoneNumber
+        )
+        .accounts({
+          authority: user1.publicKey,
+          user: user1PDA,
+          idNumberClaim: idNumberClaimPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([user1])
+        .rpc();
+    });
+
+    it("allows a user to create a user account", async () => {
+      const user = await program.account.user.fetch(user1PDA);
+      assert.equal(user.authority.toString(), user1.publicKey.toString());
+      assert.equal(user.firstName, user1FirstName);
+      assert.equal(user.lastName, user1LastName);
+      assert.equal(user.idNumber, user1IdNumber);
+      assert.equal(user.phoneNumber, user1PhoneNumber);
+    });
+
+    it("rejects duplicate id_number", async () => {
+      const user2 = anchor.web3.Keypair.generate();
+      await airdrop(user2.publicKey, 1_000_000_000);
+
+      const user2PDA = getUserAddress(user1IdNumber, user2.publicKey); // Same id_number as user1
+      const idNumberClaimPDA2 = getIdNumberClaimPDA(user1IdNumber);
+
+      try {
+        await program.methods
+          .createUserAccount(
+            "Jane",
+            "Smith",
+            user1IdNumber, // Duplicate id_number
+            "0987654321"
+          )
+          .accounts({
+            authority: user2.publicKey,
+            user: user2PDA,
+            idNumberClaim: idNumberClaimPDA2,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
+          .signers([user2])
+          .rpc();
+
+        throw new Error("Should have rejected duplicate id_number");
+      } catch (error: any) {
+        // Should fail because idNumberClaim account already exists
+        assert.ok(
+          error.message.includes("already in use") ||
+            error.message.includes("ConstraintSeeds") ||
+            error.code === 3009, // AccountAlreadyInUse
+          "Expected account already in use error"
+        );
+      }
+    });
+  });
+
   // helpers
   const airdrop = async (publicKey: anchor.web3.PublicKey, amount: number) => {
     const sig = await program.provider.connection.requestAirdrop(
@@ -343,5 +422,27 @@ describe("landlocked", () => {
       [anchor.utils.bytes.utf8.encode("protocol_state")],
       programID
     );
+  };
+
+  const getUserAddress = (idNumber: string, authority: PublicKey) => {
+    const utf8Bytes = Buffer.from(idNumber, "utf-8");
+    const hash = crypto.createHash("sha256").update(utf8Bytes).digest();
+    const idNumberSeed = new Uint8Array(hash);
+
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("person"), idNumberSeed, authority.toBuffer()],
+      program.programId
+    )[0];
+  };
+
+  const getIdNumberClaimPDA = (idNumber: string) => {
+    const utf8Bytes = Buffer.from(idNumber, "utf-8");
+    const hash = crypto.createHash("sha256").update(utf8Bytes).digest();
+    const idNumberSeed = new Uint8Array(hash);
+
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("id_number_claim"), idNumberSeed],
+      program.programId
+    )[0];
   };
 });
