@@ -48,4 +48,12 @@ pub mod landlocked {
     ) -> Result<()> {
         user::create_user_account_handler(ctx, first_name, last_name, id_number, phone_number)
     }
+
+    pub fn mark_title_for_sale(ctx: Context<MarkTitleForSale>, price: u64) -> Result<()> {
+        title_deed::mark_title_for_sale_handler(ctx, price)
+    }
+
+    pub fn assign_title_deed_to_owner(ctx: Context<AssignTitleDeedToOwner>, new_owner_address: Pubkey) -> Result<()> {
+        title_deed::assign_title_deed_to_owner_handler(ctx, new_owner_address)
+    }
 }

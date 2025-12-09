@@ -12,4 +12,6 @@ pub enum ProtocolError {
     InvalidRegistrar,
     #[msg("ID number already exists")]
     DuplicateIdNumber,
+    #[msg("Unauthorized: Only the owner can perform this action")]
+    Unauthorized,
 }

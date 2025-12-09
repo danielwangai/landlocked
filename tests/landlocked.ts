@@ -4,6 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 import * as assert from "assert";
 import { Landlocked } from "../target/types/landlocked";
 import crypto from "crypto";
+import { BN } from "@coral-xyz/anchor";
 
 describe("landlocked", () => {
   // Configure the client to use the local cluster.
@@ -53,6 +54,25 @@ describe("landlocked", () => {
     program.programId
   );
 
+  const owner1Details = {
+    firstName: "John",
+    lastName: "Doe",
+    idNumber: "1234567890",
+    phoneNumber: "+254700000000",
+  }
+  const owner2Details = {
+    firstName: "Jane",
+    lastName: "Smith",
+    idNumber: "94389892343",
+    phoneNumber: "+254700000001",
+  }
+  const owner1 = anchor.web3.Keypair.generate();
+  const owner2 = anchor.web3.Keypair.generate();
+  let owner1PDA: PublicKey;
+  let owner2PDA: PublicKey;
+  let owner1IdNumberClaimPDA: PublicKey;
+  let owner2IdNumberClaimPDA: PublicKey;
+
   before(async () => {
     // airdrop SOL to the admins
     await airdrop(admin1.publicKey, 1_000_000_000);
@@ -80,6 +100,46 @@ describe("landlocked", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([admin1])
+      .rpc();
+
+    // Compute PDAs inside before hook
+    owner1PDA = getUserAddress(owner1Details.idNumber, owner1.publicKey);
+    owner2PDA = getUserAddress(owner2Details.idNumber, owner2.publicKey);
+    owner1IdNumberClaimPDA = getIdNumberClaimPDA(owner1Details.idNumber);
+    owner2IdNumberClaimPDA = getIdNumberClaimPDA(owner2Details.idNumber);
+
+    await airdrop(owner1.publicKey, 1_000_000_000);
+    await program.methods
+      .createUserAccount(
+        owner1Details.firstName,
+        owner1Details.lastName,
+        owner1Details.idNumber,
+        owner1Details.phoneNumber
+      )
+      .accounts({
+        authority: owner1.publicKey,
+        user: owner1PDA,
+        idNumberClaim: owner1IdNumberClaimPDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([owner1])
+      .rpc();
+    
+    await airdrop(owner2.publicKey, 1_000_000_000);
+    await program.methods
+      .createUserAccount(
+        owner2Details.firstName,
+        owner2Details.lastName,
+        owner2Details.idNumber,
+        owner2Details.phoneNumber
+      )
+      .accounts({
+        authority: owner2.publicKey,
+        user: owner2PDA,
+        idNumberClaim: owner2IdNumberClaimPDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([owner2])
       .rpc();
   });
 
@@ -330,59 +390,28 @@ describe("landlocked", () => {
   });
 
   describe("user accounts", () => {
-    const user1FirstName = "John";
-    const user1LastName = "Doe";
-    const user1IdNumber = "1234567890";
-    const user1PhoneNumber = "1234567890";
-    const user1 = anchor.web3.Keypair.generate();
-    let user1PDA: PublicKey;
-    let idNumberClaimPDA: PublicKey;
-
-    before(async () => {
-      // Compute PDAs inside before hook
-      user1PDA = getUserAddress(user1IdNumber, user1.publicKey);
-      idNumberClaimPDA = getIdNumberClaimPDA(user1IdNumber);
-
-      await airdrop(user1.publicKey, 1_000_000_000);
-      await program.methods
-        .createUserAccount(
-          user1FirstName,
-          user1LastName,
-          user1IdNumber,
-          user1PhoneNumber
-        )
-        .accounts({
-          authority: user1.publicKey,
-          user: user1PDA,
-          idNumberClaim: idNumberClaimPDA,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([user1])
-        .rpc();
-    });
-
     it("allows a user to create a user account", async () => {
-      const user = await program.account.user.fetch(user1PDA);
-      assert.equal(user.authority.toString(), user1.publicKey.toString());
-      assert.equal(user.firstName, user1FirstName);
-      assert.equal(user.lastName, user1LastName);
-      assert.equal(user.idNumber, user1IdNumber);
-      assert.equal(user.phoneNumber, user1PhoneNumber);
+      const user = await program.account.user.fetch(owner1PDA);
+      assert.equal(user.authority.toString(), owner1.publicKey.toString());
+      assert.equal(user.firstName, owner1Details.firstName);
+      assert.equal(user.lastName, owner1Details.lastName);
+      assert.equal(user.idNumber, owner1Details.idNumber);
+      assert.equal(user.phoneNumber, owner1Details.phoneNumber);
     });
 
     it("rejects duplicate id_number", async () => {
       const user2 = anchor.web3.Keypair.generate();
       await airdrop(user2.publicKey, 1_000_000_000);
 
-      const user2PDA = getUserAddress(user1IdNumber, user2.publicKey); // Same id_number as user1
-      const idNumberClaimPDA2 = getIdNumberClaimPDA(user1IdNumber);
+      const user2PDA = getUserAddress(owner1Details.idNumber, user2.publicKey); // Same id_number as user1
+      const idNumberClaimPDA2 = getIdNumberClaimPDA(owner1Details.idNumber);
 
       try {
         await program.methods
           .createUserAccount(
             "Jane",
             "Smith",
-            user1IdNumber, // Duplicate id_number
+            owner1Details.idNumber, // Duplicate id_number
             "0987654321"
           )
           .accounts({
@@ -402,6 +431,84 @@ describe("landlocked", () => {
             error.message.includes("ConstraintSeeds") ||
             error.code === 3009, // AccountAlreadyInUse
           "Expected account already in use error"
+        );
+      }
+    });
+  });
+
+  describe("title deeds", () => {
+    let titleDeedPDA: PublicKey;
+
+    before(async () => {
+      titleDeedPDA = getTitleDeedPDA(owner1.publicKey);
+      await program.methods
+        .assignTitleDeedToOwner(owner1.publicKey)
+        .accounts({
+          authority: registrar1.publicKey,
+          registrar: registrar1PDA,
+          titleDeed: titleDeedPDA,
+          owner: owner1PDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([registrar1])
+        .rpc();
+    });
+
+    it("allows a registrar to assign a title deed to a owner", async () => {
+      const titleDeed = await program.account.titleDeed.fetch(titleDeedPDA);
+      assert.equal(titleDeed.authority.toString(), owner1.publicKey.toString());
+      assert.equal(
+        titleDeed.owner.authority.toString(),
+        owner1.publicKey.toString()
+      );
+      assert.equal(titleDeed.isForSale, false);
+    });
+
+    it("can allow owner to mark title deed for sale", async () => {
+      const titleForSalePDA = getTitleForSalePDA(titleDeedPDA, owner1.publicKey);
+
+      await program.methods
+        .markTitleForSale(new BN(1000000000))
+        .accounts({
+          authority: owner1.publicKey, // owner
+          titleDeed: titleDeedPDA,
+          seller: owner1PDA,
+          titleForSale: titleForSalePDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([owner1])
+        .rpc();
+
+      const titleForSale = await program.account.titleForSale.fetch(
+        titleForSalePDA
+      );
+      assert.equal(titleForSale.titleDeed.toString(), titleDeedPDA.toString());
+    });
+
+    it("cannot allow owner to mark title deed for sale if not the owner", async () => {
+      const titleForSalePDA = getTitleForSalePDA(titleDeedPDA, owner2.publicKey);
+      const owner2PDA = getUserAddress(owner2Details.idNumber, owner2.publicKey);
+
+      try {
+        await program.methods
+          .markTitleForSale(new BN(1000000000))
+          .accounts({
+            authority: owner2.publicKey, // not the owner
+            titleDeed: titleDeedPDA,
+            seller: owner2PDA,
+            titleForSale: titleForSalePDA,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
+          .signers([owner2])
+          .rpc();
+        assert.fail("Expected transaction to fail");
+      } catch (error) {
+        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+        const anchorError = error as anchor.AnchorError;
+        assert.equal(
+          anchorError.error?.errorCode?.code,
+          "Unauthorized",
+          "Expected Unauthorized error"
         );
       }
     });
@@ -442,6 +549,20 @@ describe("landlocked", () => {
 
     return PublicKey.findProgramAddressSync(
       [Buffer.from("id_number_claim"), idNumberSeed],
+      program.programId
+    )[0];
+  };
+
+  const getTitleDeedPDA = (owner: PublicKey) => {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("title_deed"), owner.toBuffer()],
+      program.programId
+    )[0];
+  };
+
+  const getTitleForSalePDA = (titleDeed: PublicKey, seller: PublicKey) => {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("title_for_sale"), seller.toBuffer(), titleDeed.toBuffer()],
       program.programId
     )[0];
   };

@@ -1,5 +1,5 @@
 use crate::{
-    Admin, Registrar, USER_SEED, User, error::ProtocolError, state::{IdNumberClaim, ProtocolState}
+    Admin, Registrar, USER_SEED, User, error::ProtocolError, state::{IdNumberClaim, ProtocolState, TitleDeed, TitleForSale}
 };
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
@@ -98,5 +98,65 @@ pub struct CreateUserAccount<'info> {
         // If this claim already exists, init will fail, preventing duplicate id_numbers
     )]
     pub id_number_claim: Account<'info, IdNumberClaim>,
+    pub system_program: Program<'info, System>,
+}
+
+// assign a title deed to a owner
+#[derive(Accounts)]
+#[instruction(new_owner_address: Pubkey)]
+pub struct AssignTitleDeedToOwner<'info> {
+    #[account(
+        mut,
+        constraint = registrar.is_active @ ProtocolError::InvalidRegistrar,
+        constraint = registrar.authority == authority.key() @ ProtocolError::InvalidRegistrar
+    )]
+    pub authority: Signer<'info>, // Must be a registrar
+    #[account(
+        seeds = [b"registrar", authority.key().as_ref()],
+        bump = registrar.bump,
+    )]
+    pub registrar: Account<'info, Registrar>,
+    // TODO: owner must have permitted the transfer(through escrow process)
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + TitleDeed::INIT_SPACE,
+        seeds = [b"title_deed", new_owner_address.as_ref()],
+        bump
+    )]
+    pub title_deed: Account<'info, TitleDeed>,
+    pub owner: Account<'info, User>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(price: u64)]
+pub struct MarkTitleForSale<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>, // Must be the owner of the title deed
+    #[account(
+        mut,
+        // title deed must be owned by the authority
+        constraint = title_deed.authority == authority.key() @ ProtocolError::Unauthorized,
+        // seller must be the owner of the title deed
+        constraint = title_deed.owner.authority == authority.key() @ ProtocolError::Unauthorized
+    )]
+    pub title_deed: Account<'info, TitleDeed>,
+    #[account(
+        // seller must be the authority
+        constraint = seller.authority == authority.key() @ ProtocolError::Unauthorized,
+        // seller must be the owner of the title deed
+        constraint = seller.authority == title_deed.owner.authority @ ProtocolError::Unauthorized
+    )]
+    pub seller: Account<'info, User>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + TitleForSale::INIT_SPACE,
+        seeds = [b"title_for_sale", seller.authority.key().as_ref(), title_deed.key().as_ref()],
+        constraint = authority.key() == title_deed.owner.authority @ ProtocolError::Unauthorized,
+        bump
+    )]
+    pub title_for_sale: Account<'info, TitleForSale>,
     pub system_program: Program<'info, System>,
 }

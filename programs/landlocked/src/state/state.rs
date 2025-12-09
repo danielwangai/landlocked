@@ -64,3 +64,33 @@ pub struct IdNumberClaim {
     pub person: Pubkey, // The person account that owns this id_number
     pub bump: u8,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct TitleDeed {
+    pub owner: User,
+    pub authority: Pubkey,
+    #[max_len(15)]
+    pub title_number: String,
+    #[max_len(100)]
+    pub location: String,
+    pub acreage: f64,
+    #[max_len(100)]
+    pub disctrict_land_registry: String,
+    pub registration_date: i64,
+    pub registry_mapsheet_number: u64,
+    pub is_for_sale: bool,
+    pub bump: u8,
+}
+
+/// Sale listing for a title deed
+/// PDA: [b"title_for_sale", title_deed.key().as_ref()]
+#[account]
+#[derive(InitSpace)]
+pub struct TitleForSale {
+    pub title_deed: Pubkey,  // Reference to the title deed being sold
+    pub seller: User,        // Seller's user account details
+    pub sale_price: u64,     // Price in lamports (smallest unit of SOL)
+    pub listed_at: i64,      // Timestamp when listed for sale
+    pub bump: u8,
+}
