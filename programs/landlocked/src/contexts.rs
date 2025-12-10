@@ -1,5 +1,7 @@
 use crate::{
-    Admin, Registrar, USER_SEED, User, error::ProtocolError, state::{IdNumberClaim, ProtocolState, TitleDeed, TitleForSale}
+    error::ProtocolError,
+    state::{IdNumberClaim, ProtocolState, TitleDeed, TitleForSale, TitleNumberLookup},
+    Admin, Registrar, User, USER_SEED,
 };
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
@@ -103,7 +105,7 @@ pub struct CreateUserAccount<'info> {
 
 // assign a title deed to a owner
 #[derive(Accounts)]
-#[instruction(new_owner_address: Pubkey)]
+#[instruction(new_owner_address: Pubkey, title_number: String)]
 pub struct AssignTitleDeedToOwner<'info> {
     #[account(
         mut,
@@ -126,6 +128,14 @@ pub struct AssignTitleDeedToOwner<'info> {
     )]
     pub title_deed: Account<'info, TitleDeed>,
     pub owner: Account<'info, User>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + TitleNumberLookup::INIT_SPACE,
+        seeds = [b"title_number_lookup", title_number.as_bytes()],
+        bump
+    )]
+    pub title_number_lookup: Account<'info, TitleNumberLookup>,
     pub system_program: Program<'info, System>,
 }
 
@@ -158,5 +168,30 @@ pub struct MarkTitleForSale<'info> {
         bump
     )]
     pub title_for_sale: Account<'info, TitleForSale>,
+    pub system_program: Program<'info, System>,
+}
+
+/// Search title deed by title_number
+/// This allows buyers to search for title deeds by their title number
+#[derive(Accounts)]
+#[instruction(title_number: String)]
+pub struct SearchTitleDeedByNumber<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(
+        seeds = [b"title_number_lookup", title_number.as_bytes()],
+        bump = title_number_lookup.bump
+    )]
+    pub title_number_lookup: Account<'info, TitleNumberLookup>,
+    /// CHECK: Title deed account - validated by constraint
+    #[account(
+        constraint = title_deed.key() == title_number_lookup.title_deed @ ProtocolError::TitleAuthorityMismatch
+    )]
+    pub title_deed: Account<'info, TitleDeed>,
+    #[account(
+        mut,
+        constraint = searched_by.authority == authority.key() @ ProtocolError::Unauthorized
+    )]
+    pub searched_by: Account<'info, User>,
     pub system_program: Program<'info, System>,
 }

@@ -53,7 +53,27 @@ pub mod landlocked {
         title_deed::mark_title_for_sale_handler(ctx, price)
     }
 
-    pub fn assign_title_deed_to_owner(ctx: Context<AssignTitleDeedToOwner>, new_owner_address: Pubkey) -> Result<()> {
-        title_deed::assign_title_deed_to_owner_handler(ctx, new_owner_address)
+    pub fn assign_title_deed_to_owner(
+        ctx: Context<AssignTitleDeedToOwner>,
+        new_owner_address: Pubkey,
+        title_number: String,
+        location: String,
+        acreage: f64,
+        district_land_registry: String,
+        registry_mapsheet_number: u64,
+    ) -> Result<()> {
+        title_deed::assign_title_deed_to_owner_handler(
+            ctx,
+            new_owner_address,
+            title_number,
+            location,
+            acreage,
+            district_land_registry,
+            registry_mapsheet_number,
+        )
+    }
+
+    pub fn search_title_deed_by_number(ctx: Context<SearchTitleDeedByNumber>, title_number: String) -> Result<()> {
+        title_deed::search_title_deed_by_number_handler(ctx)
     }
 }

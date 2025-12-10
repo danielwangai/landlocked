@@ -88,9 +88,21 @@ pub struct TitleDeed {
 #[account]
 #[derive(InitSpace)]
 pub struct TitleForSale {
-    pub title_deed: Pubkey,  // Reference to the title deed being sold
-    pub seller: User,        // Seller's user account details
-    pub sale_price: u64,     // Price in lamports (smallest unit of SOL)
-    pub listed_at: i64,      // Timestamp when listed for sale
+    pub title_deed: Pubkey, // Reference to the title deed being sold
+    pub seller: User,       // Seller's user account details
+    pub sale_price: u64,    // Price in lamports (smallest unit of SOL)
+    pub listed_at: i64,     // Timestamp when listed for sale
+    pub bump: u8,
+}
+
+/// Index mapping title_number to TitleDeed account address for search
+/// PDA: [b"title_number_index", title_number.as_bytes()]
+#[account]
+#[derive(InitSpace)]
+pub struct TitleNumberLookup {
+    #[max_len(15)]
+    pub title_number: String, // The title number being indexed
+    pub title_deed: Pubkey, // Address of the TitleDeed account
+    pub searched_by: User,  // The user who searched for the title number
     pub bump: u8,
 }

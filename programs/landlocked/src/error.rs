@@ -14,4 +14,6 @@ pub enum ProtocolError {
     DuplicateIdNumber,
     #[msg("Unauthorized: Only the owner can perform this action")]
     Unauthorized,
+    #[msg("Title deed address mismatch")]
+    TitleAuthorityMismatch,
 }
