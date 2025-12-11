@@ -16,4 +16,10 @@ pub enum ProtocolError {
     Unauthorized,
     #[msg("Title deed address mismatch")]
     TitleAuthorityMismatch,
+    #[msg("Title not for sale")]
+    TitleNotForSale,
+    #[msg("Title not marked for sale")]
+    TitleNotMarkedForSale,
+    #[msg("An agreement already exists for this title deed")]
+    AgreementAlreadyExists,
 }

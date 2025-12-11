@@ -76,4 +76,12 @@ pub mod landlocked {
     pub fn search_title_deed_by_number(ctx: Context<SearchTitleDeedByNumber>, title_number: String) -> Result<()> {
         title_deed::search_title_deed_by_number_handler(ctx)
     }
+
+    pub fn make_agreement(ctx: Context<MakeAgreement>, price: u64) -> Result<()> {
+        title_deed::make_agreement_handler(ctx, price)
+    }
+
+    pub fn sign_agreement(ctx: Context<SignAgreement>) -> Result<()> {
+        title_deed::sign_agreement_handler(ctx)
+    }
 }

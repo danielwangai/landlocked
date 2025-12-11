@@ -79,7 +79,7 @@ pub struct TitleDeed {
     pub disctrict_land_registry: String,
     pub registration_date: i64,
     pub registry_mapsheet_number: u64,
-    pub is_for_sale: bool,
+    pub is_for_sale: bool, // TODO: remove this field
     pub bump: u8,
 }
 
@@ -103,6 +103,31 @@ pub struct TitleNumberLookup {
     #[max_len(15)]
     pub title_number: String, // The title number being indexed
     pub title_deed: Pubkey, // Address of the TitleDeed account
-    pub searched_by: User,  // The user who searched for the title number
+    pub searched_by: Pubkey,  // The authority/pubkey of the user who searched (Pubkey::default() until first search)
+    pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct Agreement {
+    pub seller: User,
+    pub buyer: User,
+    pub title_deed: Pubkey,
+    pub price: u64,
+    pub created_at: i64,
+    pub drafted_by: Pubkey,
+    pub buyer_signature: Option<Pubkey>,
+    pub drafted_at: i64,
+    pub buyer_signed_at: Option<i64>,
+    pub bump: u8,
+}
+
+/// Index to enforce one agreement per title deed
+/// PDA: [b"agreement_index", title_deed.key().as_ref()]
+#[account]
+#[derive(InitSpace)]
+pub struct AgreementIndex {
+    pub title_deed: Pubkey,
+    pub agreement: Pubkey, // The active agreement for this title deed
     pub bump: u8,
 }

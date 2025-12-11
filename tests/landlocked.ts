@@ -26,7 +26,7 @@ describe("landlocked", () => {
   let registrar2PDA: PublicKey;
   let fakeAdminPDA: PublicKey;
   // title2 PDA
-  let title2DeedPDA: PublicKey;
+  let titleDeed2PDA: PublicKey;
   // lookup PDA for title2
   let title2NumberLookupPDA: PublicKey;
 
@@ -203,7 +203,7 @@ describe("landlocked", () => {
       .signers([registrar2])
       .rpc();
 
-    title2DeedPDA = getTitleDeedPDA(owner2.publicKey);
+    titleDeed2PDA = getTitleDeedPDA(owner2.publicKey);
     title2NumberLookupPDA = getTitleNumberLookupPDA(owner2Details.titleNumber);
 
     // assign title deed to owner2
@@ -219,9 +219,8 @@ describe("landlocked", () => {
       .accounts({
         authority: registrar2.publicKey,
         registrar: registrar2PDA,
-        titleDeed: title2DeedPDA,
+        titleDeed: titleDeed2PDA,
         owner: owner2PDA,
-        titleNumberLookup: title2NumberLookupPDA,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([registrar2])
@@ -519,11 +518,51 @@ describe("landlocked", () => {
   });
 
   describe("title deeds", () => {
+    // actors
+    const buyer1 = anchor.web3.Keypair.generate();
+
+    // PDAs
     let titleDeedPDA: PublicKey;
     let titleNumberLookupPDA: PublicKey;
+    let agreement2PDA: PublicKey;
+    let title2ForSalePDA: PublicKey;
+    let buyer1PDA: PublicKey;
+    let buyer1IdNumberClaimPDA: PublicKey;
+
     before(async () => {
+      // airdrops
+      await airdrop(buyer1.publicKey, 1000000000);
+
+      // buyer1 details
+      const buyer1Details = {
+        idNumber: "896516816161",
+        firstName: "Buyer",
+        lastName: "One",
+        phoneNumber: "121546868",
+      };
+      buyer1PDA = getUserAddress(buyer1Details.idNumber, buyer1.publicKey);
+      buyer1IdNumberClaimPDA = getIdNumberClaimPDA(buyer1Details.idNumber);
       titleDeedPDA = getTitleDeedPDA(owner1.publicKey);
       titleNumberLookupPDA = getTitleNumberLookupPDA(owner1Details.titleNumber);
+      title2ForSalePDA = getTitleForSalePDA(titleDeed2PDA, owner2.publicKey);
+
+      // create a buyer account
+      await program.methods
+        .createUserAccount(
+          buyer1Details.firstName,
+          buyer1Details.lastName,
+          buyer1Details.idNumber,
+          buyer1Details.phoneNumber
+        )
+        .accounts({
+          authority: buyer1.publicKey,
+          user: buyer1PDA,
+          idNumberClaim: buyer1IdNumberClaimPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([buyer1])
+        .rpc();
+
       await program.methods
         .assignTitleDeedToOwner(
           owner1.publicKey,
@@ -538,10 +577,63 @@ describe("landlocked", () => {
           registrar: registrar2PDA,
           titleDeed: titleDeedPDA,
           owner: owner1PDA,
-          titleNumberLookup: titleNumberLookupPDA,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([registrar2])
+        .rpc();
+
+      // owner2 marks title deed for sale
+      await program.methods
+        .markTitleForSale(new BN(1000000000))
+        .accounts({
+          authority: owner2.publicKey, // owner
+          titleDeed: titleDeed2PDA,
+          seller: owner2PDA,
+          titleForSale: title2ForSalePDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([owner2])
+        .rpc();
+
+      // owner1 is interested in buying land from owner2(with title2 of number 342343243)
+      await program.methods
+        .searchTitleDeedByNumber(owner2Details.titleNumber)
+        .accounts({
+          authority: owner1.publicKey,
+          titleNumberLookup: title2NumberLookupPDA,
+          titleDeed: titleDeed2PDA,
+          searchedBy: owner1PDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([owner1])
+        .rpc();
+
+      // fetch search result
+      const searchResult = await program.account.titleNumberLookup.fetch(
+        title2NumberLookupPDA
+      );
+
+      // owner2 makes agreement
+      agreement2PDA = getAgreementPDA(
+        owner2.publicKey,
+        owner1.publicKey,
+        titleDeed2PDA,
+        new BN(1000000000)
+      );
+      const agreementIndex2PDA = getAgreementIndexPDA(titleDeed2PDA);
+      await program.methods
+        .makeAgreement(new BN(1000000000))
+        .accounts({
+          authority: owner2.publicKey,
+          titleDeed: titleDeed2PDA,
+          titleForSale: title2ForSalePDA,
+          seller: owner2PDA,
+          buyer: owner1PDA,
+          titleNumberLookup: title2NumberLookupPDA,
+          agreement: agreement2PDA,
+          agreementIndex: agreementIndex2PDA,
+        })
+        .signers([owner2])
         .rpc();
     });
 
@@ -556,27 +648,25 @@ describe("landlocked", () => {
     });
 
     it("can allow owner to mark title deed for sale", async () => {
-      const titleForSalePDA = getTitleForSalePDA(
+      const title1ForSalePDA = getTitleForSalePDA(
         titleDeedPDA,
         owner1.publicKey
       );
-
       await program.methods
         .markTitleForSale(new BN(1000000000))
         .accounts({
           authority: owner1.publicKey, // owner
           titleDeed: titleDeedPDA,
           seller: owner1PDA,
-          titleForSale: titleForSalePDA,
+          titleForSale: title1ForSalePDA,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([owner1])
         .rpc();
-
-      const titleForSale = await program.account.titleForSale.fetch(
-        titleForSalePDA
+      const title1ForSale = await program.account.titleForSale.fetch(
+        title1ForSalePDA
       );
-      assert.equal(titleForSale.titleDeed.toString(), titleDeedPDA.toString());
+      assert.equal(title1ForSale.titleDeed.toString(), titleDeedPDA.toString());
     });
 
     it("cannot allow owner to mark title deed for sale if not the owner", async () => {
@@ -614,28 +704,81 @@ describe("landlocked", () => {
     });
 
     it("can allow a buyer to search for a title deed by title number", async () => {
-      // owner1 is interested in buying land from owner2(with title2 of number 342343243)
-      await program.methods
-        .searchTitleDeedByNumber(owner2Details.titleNumber)
-        .accounts({
-          authority: owner1.publicKey,
-          titleNumberLookup: title2NumberLookupPDA,
-          titleDeed: title2DeedPDA,
-          searchedBy: owner1PDA,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([owner1])
-        .rpc();
-
       // fetch the title deed details
-      const titleDeed = await program.account.titleDeed.fetch(title2DeedPDA);
+      const titleDeed = await program.account.titleDeed.fetch(titleDeed2PDA);
       // confirm if owner2 is the rightful owner of the title deed
       assert.equal(titleDeed.authority.toString(), owner2.publicKey.toString());
       assert.equal(
         titleDeed.owner.authority.toString(),
         owner2.publicKey.toString()
       );
-      assert.equal(titleDeed.isForSale, false);
+      // title2 was marked for sale in the before hook, so isForSale should be true
+      assert.equal(titleDeed.isForSale, true);
+    });
+
+    it("can allow a buyer to make an agreement", async () => {
+      const agreement = await program.account.agreement.fetch(agreement2PDA);
+      assert.equal(
+        agreement.seller.authority.toString(),
+        owner2.publicKey.toString()
+      );
+      assert.equal(
+        agreement.buyer.authority.toString(),
+        owner1.publicKey.toString()
+      );
+      assert.equal(agreement.titleDeed.toString(), titleDeed2PDA.toString());
+      assert.equal(agreement.price.toString(), new BN(1000000000).toString());
+      assert.equal(agreement.draftedBy.toString(), owner2.publicKey.toString());
+    });
+
+    it("does not allow seller to have multiple agreements for the same title deed at the same time", async () => {
+      // owner2 already has an agreement for the same title deed
+      // buyer1 is interested in buying the title deed from owner2 and performs a search
+      await program.methods
+        .searchTitleDeedByNumber(owner2Details.titleNumber)
+        .accounts({
+          authority: buyer1.publicKey,
+          titleDeed: titleDeed2PDA,
+          titleNumberLookup: title2NumberLookupPDA,
+          searchedBy: buyer1PDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([buyer1])
+        .rpc();
+
+      // create a new agreement for the same title deed
+      const agreement3PDA = getAgreementPDA(
+        owner2.publicKey,
+        buyer1.publicKey,
+        titleDeed2PDA,
+        new BN(1000000000)
+      );
+      const agreementIndex3PDA = getAgreementIndexPDA(titleDeed2PDA);
+      try {
+        await program.methods
+          .makeAgreement(new BN(1000000000))
+          .accounts({
+            authority: owner2.publicKey,
+            titleDeed: titleDeed2PDA,
+            titleForSale: title2ForSalePDA,
+            seller: owner2PDA,
+            buyer: buyer1PDA,
+            titleNumberLookup: title2NumberLookupPDA,
+            agreement: agreement3PDA,
+            agreementIndex: agreementIndex3PDA,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
+          .signers([owner2])
+          .rpc();
+      } catch (error) {
+        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+        const anchorError = error as anchor.AnchorError;
+        assert.equal(
+          anchorError.error?.errorCode?.code,
+          "AgreementAlreadyExists",
+          "Expected AgreementAlreadyExists error"
+        );
+      }
     });
   });
 
@@ -702,6 +845,34 @@ describe("landlocked", () => {
   const getTitleNumberLookupPDA = (titleNumber: string) => {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("title_number_lookup"), Buffer.from(titleNumber)],
+      program.programId
+    )[0];
+  };
+
+  const getAgreementPDA = (
+    seller: PublicKey,
+    buyer: PublicKey,
+    titleDeed: PublicKey,
+    price: BN
+  ) => {
+    // price.to_le_bytes() in Rust returns 8 bytes in little-endian format
+    const priceBuffer = Buffer.allocUnsafe(8);
+    price.toArrayLike(Buffer, "le", 8).copy(priceBuffer);
+    return PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("agreement"),
+        seller.toBuffer(),
+        buyer.toBuffer(),
+        titleDeed.toBuffer(),
+        priceBuffer,
+      ],
+      program.programId
+    )[0];
+  };
+
+  const getAgreementIndexPDA = (titleDeed: PublicKey) => {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("agreement_index"), titleDeed.toBuffer()],
       program.programId
     )[0];
   };

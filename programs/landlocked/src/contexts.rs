@@ -1,7 +1,5 @@
 use crate::{
-    error::ProtocolError,
-    state::{IdNumberClaim, ProtocolState, TitleDeed, TitleForSale, TitleNumberLookup},
-    Admin, Registrar, User, USER_SEED,
+    Admin, Agreement, Registrar, USER_SEED, User, error::ProtocolError, state::{IdNumberClaim, ProtocolState, TitleDeed, TitleForSale, TitleNumberLookup, AgreementIndex}
 };
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
@@ -128,14 +126,6 @@ pub struct AssignTitleDeedToOwner<'info> {
     )]
     pub title_deed: Account<'info, TitleDeed>,
     pub owner: Account<'info, User>,
-    #[account(
-        init,
-        payer = authority,
-        space = 8 + TitleNumberLookup::INIT_SPACE,
-        seeds = [b"title_number_lookup", title_number.as_bytes()],
-        bump
-    )]
-    pub title_number_lookup: Account<'info, TitleNumberLookup>,
     pub system_program: Program<'info, System>,
 }
 
@@ -173,25 +163,108 @@ pub struct MarkTitleForSale<'info> {
 
 /// Search title deed by title_number
 /// This allows buyers to search for title deeds by their title number
+// TODO: should search be done only on land/titles marked for sale?
 #[derive(Accounts)]
 #[instruction(title_number: String)]
 pub struct SearchTitleDeedByNumber<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
+    /// Title deed being searched - caller must provide this
     #[account(
-        seeds = [b"title_number_lookup", title_number.as_bytes()],
-        bump = title_number_lookup.bump
-    )]
-    pub title_number_lookup: Account<'info, TitleNumberLookup>,
-    /// CHECK: Title deed account - validated by constraint
-    #[account(
-        constraint = title_deed.key() == title_number_lookup.title_deed @ ProtocolError::TitleAuthorityMismatch
+        constraint = title_deed.title_number == title_number @ ProtocolError::TitleAuthorityMismatch
     )]
     pub title_deed: Account<'info, TitleDeed>,
+    /// Lookup account - created lazily on first search
+    /// Account may not exist yet - handler will create it if needed
+    /// CHECK: Account may not be initialized yet - handler will check and create if needed
+    #[account(mut)]
+    pub title_number_lookup: UncheckedAccount<'info>,
     #[account(
         mut,
         constraint = searched_by.authority == authority.key() @ ProtocolError::Unauthorized
     )]
     pub searched_by: Account<'info, User>,
     pub system_program: Program<'info, System>,
+}
+
+// Make an agreement for the sale of a title deed
+// we have many checks(constraints) to ensure that due process is followed
+// to reduce risk of fraud and potential disputes since land issues are sensitive.
+// TODO: time bound agreements - if no escrow is created within the time limit, the agreement is void.
+#[derive(Accounts)]
+#[instruction(price: u64)]
+pub struct MakeAgreement<'info> {
+    #[account(mut,
+        constraint = title_deed.authority == authority.key() @ ProtocolError::Unauthorized
+    )]
+    pub authority: Signer<'info>, // Must be the seller of the title deed - current land owner drafts the agreement
+    #[account(
+        mut,
+        // title deed for the land being sold must match the searched title deed
+        constraint = title_deed.key() == title_number_lookup.title_deed.key() @ ProtocolError::TitleNotMarkedForSale
+    )]
+    pub title_deed: Account<'info, TitleDeed>,
+    #[account(
+        mut,
+        seeds = [b"title_for_sale", authority.key().as_ref(), title_deed.key().as_ref()],
+        bump = title_for_sale.bump,
+        // title marked for sale must be the same as the title deed in the agreement
+        constraint = title_for_sale.title_deed == title_deed.key() @ ProtocolError::TitleNotMarkedForSale
+    )]
+    pub title_for_sale: Account<'info, TitleForSale>,
+    #[account(
+        mut,
+        // seller must be the authority to initiate the agreement
+        constraint = seller.authority == authority.key() @ ProtocolError::Unauthorized,
+        // seller must match the seller in the title marked for sale
+        constraint = seller.authority == title_for_sale.seller.authority @ ProtocolError::Unauthorized
+    )]
+    pub seller: Account<'info, User>,
+    // TODO: add constraint for buyer
+    pub buyer: Account<'info, User>,
+    // TODO: allow multiple searches for the same title number
+    #[account(
+        mut,
+        seeds = [b"title_number_lookup", title_deed.title_number.as_bytes()],
+        bump = title_number_lookup.bump,
+        constraint = title_number_lookup.title_number == title_deed.title_number @ ProtocolError::TitleNotMarkedForSale
+    )]
+    pub title_number_lookup: Account<'info, TitleNumberLookup>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + Agreement::INIT_SPACE,
+        seeds = [b"agreement", authority.key().as_ref(), buyer.authority.key().as_ref(), title_deed.key().as_ref(), price.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub agreement: Account<'info, Agreement>,
+    /// CHECK: AgreementIndex may already exist - handler will check and throw AgreementAlreadyExists if needed
+    /// PDA validation ensures correct account is passed
+    #[account(
+        mut,
+        seeds = [b"agreement_index", title_deed.key().as_ref()],
+        bump
+    )]
+    pub agreement_index: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(price: u64)]
+pub struct SignAgreement<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>, // Must be the buyer of the agreement
+    #[account(
+        mut,
+        constraint = title_deed.key() == agreement.title_deed @ ProtocolError::TitleAuthorityMismatch
+    )]
+    pub title_deed: Account<'info, TitleDeed>,
+    #[account(
+        mut,
+        seeds = [b"agreement", agreement.seller.authority.as_ref(), agreement.buyer.authority.as_ref(), title_deed.key().as_ref(), price.to_le_bytes().as_ref()],
+        bump = agreement.bump,
+        constraint = agreement.buyer.authority == authority.key() @ ProtocolError::Unauthorized,
+        constraint = agreement.price == price @ ProtocolError::TitleAuthorityMismatch
+    )]
+    pub agreement: Account<'info, Agreement>,
 }
