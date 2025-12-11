@@ -528,7 +528,7 @@ describe("landlocked", () => {
     let title2ForSalePDA: PublicKey;
     let buyer1PDA: PublicKey;
     let buyer1IdNumberClaimPDA: PublicKey;
-
+    let agreementIndex2PDA: PublicKey;
     before(async () => {
       // airdrops
       await airdrop(buyer1.publicKey, 1000000000);
@@ -620,7 +620,7 @@ describe("landlocked", () => {
         titleDeed2PDA,
         new BN(1000000000)
       );
-      const agreementIndex2PDA = getAgreementIndexPDA(titleDeed2PDA);
+      agreementIndex2PDA = getAgreementIndexPDA(titleDeed2PDA);
       await program.methods
         .makeAgreement(new BN(1000000000))
         .accounts({
@@ -779,6 +779,78 @@ describe("landlocked", () => {
           "Expected AgreementAlreadyExists error"
         );
       }
+    });
+
+    it("does not allow seller to cancel an agreement if not the seller", async () => {
+      // the agreement is between owner2(seller) and buyer1(buyer)
+      // buyer1 who is not part of the deal tries to cancel the agreement
+      try {
+        await program.methods
+          .cancelAgreement()
+          .accounts({
+            authority: buyer1.publicKey,
+            agreement: agreement2PDA,
+            agreementIndex: agreementIndex2PDA,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
+          .signers([buyer1])
+          .rpc();
+        assert.fail("Expected transaction to fail");
+      } catch (error) {
+        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+        const anchorError = error as anchor.AnchorError;
+        assert.equal(
+          anchorError.error?.errorCode?.code,
+          "Unauthorized",
+          "Expected Unauthorized error"
+        );
+      }
+    });
+
+    it("can allow a buyer to cancel an agreement", async () => {
+      // fetch the agreement before cancellation
+      const agreementBeforeCancellation = await program.account.agreement.fetch(
+        agreement2PDA
+      );
+      assert.equal(
+        agreementBeforeCancellation.seller.authority.toString(),
+        owner2.publicKey.toString()
+      );
+      assert.equal(
+        agreementBeforeCancellation.buyer.authority.toString(),
+        owner1.publicKey.toString()
+      );
+      await program.methods
+        .cancelAgreement()
+        .accounts({
+          authority: owner1.publicKey,
+          agreement: agreement2PDA,
+          agreementIndex: agreementIndex2PDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([owner1])
+        .rpc();
+
+      // Assert that the agreement account no longer exists after cancellation
+      try {
+        await program.account.agreement.fetch(agreement2PDA);
+        assert.fail("Expected account to not exist after cancellation");
+      } catch (error: any) {
+        assert.ok(
+          error.message.includes("Account does not exist") ||
+            error.message.includes("has no data"),
+          "Expected account not found error"
+        );
+      }
+
+      // owner2's land should still be marked for sale
+      const titleDeed = await program.account.titleForSale.fetch(
+        title2ForSalePDA
+      );
+      assert.equal(
+        titleDeed.salePrice.toString(),
+        new BN(1000000000).toString()
+      );
     });
   });
 

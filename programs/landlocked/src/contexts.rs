@@ -268,3 +268,24 @@ pub struct SignAgreement<'info> {
     )]
     pub agreement: Account<'info, Agreement>,
 }
+
+
+#[derive(Accounts)]
+pub struct CancelAgreement<'info> {
+    // must be buyer or seller
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(
+        mut,
+        close = authority,
+    )]
+    pub agreement: Account<'info, Agreement>,
+    #[account(
+        mut,
+        seeds = [b"agreement_index", agreement.title_deed.as_ref()],
+        close = authority,
+        bump
+    )]
+    pub agreement_index: Account<'info, AgreementIndex>,
+    pub system_program: Program<'info, System>,
+}

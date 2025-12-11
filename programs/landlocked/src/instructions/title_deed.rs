@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::AccountDeserialize;
 
+use crate::CancelAgreement;
 use crate::{
     contexts::{MarkTitleForSale, SearchTitleDeedByNumber},
     error::ProtocolError,
@@ -282,5 +283,22 @@ pub fn sign_agreement_handler(ctx: Context<SignAgreement>) -> Result<()> {
         ctx.accounts.authority.key(),
         clock.unix_timestamp
     );
+    Ok(())
+}
+
+pub fn cancel_agreement_handler(ctx: Context<CancelAgreement>) -> Result<()> {
+    // ensure that the authority is the buyer or seller
+    require!(
+        ctx.accounts.agreement.seller.authority == ctx.accounts.authority.key() ||
+        ctx.accounts.agreement.buyer.authority == ctx.accounts.authority.key(),
+        ProtocolError::Unauthorized
+    );
+
+    // Todo: how to handle cancellation when in escrow stage?
+
+    // close the agreement account
+    ctx.accounts.agreement.close(ctx.accounts.authority.to_account_info())?;
+
+    // TODO: store agreement history for audit purposes
     Ok(())
 }

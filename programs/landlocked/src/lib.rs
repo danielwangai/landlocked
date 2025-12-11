@@ -84,4 +84,8 @@ pub mod landlocked {
     pub fn sign_agreement(ctx: Context<SignAgreement>) -> Result<()> {
         title_deed::sign_agreement_handler(ctx)
     }
+
+    pub fn cancel_agreement(ctx: Context<CancelAgreement>) -> Result<()> {
+        title_deed::cancel_agreement_handler(ctx)
+    }
 }
