@@ -271,12 +271,18 @@ pub fn make_agreement_handler(ctx: Context<MakeAgreement>, price: u64) -> Result
 
 // land buyer signs the agreement
 pub fn sign_agreement_handler(ctx: Context<SignAgreement>) -> Result<()> {
+    // ensure that the authority is the buyer
+    require!(
+        ctx.accounts.agreement.buyer.authority == ctx.accounts.authority.key(),
+        ProtocolError::InvalidBuyerAuthority
+    );
+
     let agreement = &mut ctx.accounts.agreement;
     let clock = Clock::get()?;
 
     // Store buyer signature
-    agreement.buyer_signature = Some(ctx.accounts.authority.key());
-    agreement.buyer_signed_at = Some(clock.unix_timestamp);
+    agreement.buyer_confirmation = Some(ctx.accounts.authority.key());
+    agreement.buyer_confirmed_at = Some(clock.unix_timestamp);
 
     msg!(
         "Agreement signed by buyer {} at {}",

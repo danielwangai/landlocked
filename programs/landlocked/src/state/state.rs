@@ -116,9 +116,9 @@ pub struct Agreement {
     pub price: u64,
     pub created_at: i64,
     pub drafted_by: Pubkey,
-    pub buyer_signature: Option<Pubkey>,
+    pub buyer_confirmation: Option<Pubkey>,
     pub drafted_at: i64,
-    pub buyer_signed_at: Option<i64>,
+    pub buyer_confirmed_at: Option<i64>,
     pub bump: u8,
 }
 
