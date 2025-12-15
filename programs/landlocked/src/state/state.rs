@@ -157,3 +157,13 @@ pub struct Escrow {
     pub cancelled_at: Option<i64>,
     pub bump: u8,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct Deposit {
+    pub escrow: Pubkey,
+    pub amount: u64,
+    pub deposited_at: i64,
+    pub deposited_by: Pubkey, // buyer in the escrow/agreement
+    pub bump: u8,
+}

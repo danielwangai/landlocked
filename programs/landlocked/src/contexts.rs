@@ -1,9 +1,7 @@
 use crate::{
-    error::ProtocolError,
-    state::{
+    Admin, Agreement, Deposit, Registrar, USER_SEED, User, error::ProtocolError, state::{
         AgreementIndex, Escrow, IdNumberClaim, ProtocolState, TitleDeed, TitleForSale, TitleNumberLookup,
-    },
-    Admin, Agreement, Registrar, User, USER_SEED,
+    }
 };
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
@@ -321,5 +319,36 @@ pub struct CreateEscrow<'info> {
         bump
     )]
     pub escrow: Account<'info, Escrow>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct DepositPaymentToEscrow<'info> {
+    #[account(
+        mut,
+        constraint = authority.key() == buyer.authority.key() @ ProtocolError::Unauthorized,
+    )]
+    pub authority: Signer<'info>, // must be the buyer
+    #[account(
+        mut,
+        constraint = escrow.buyer == authority.key() @ ProtocolError::Unauthorized,
+    )]
+    pub buyer: Account<'info, User>,
+    pub seller: Account<'info, User>,
+    #[account(
+        mut,
+        constraint = escrow.buyer == buyer.authority.key() @ ProtocolError::Unauthorized,
+        constraint = escrow.agreement == agreement.key() @ ProtocolError::InvalidAgreement,
+    )]
+    pub escrow: Account<'info, Escrow>,
+    pub agreement: Account<'info, Agreement>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + Deposit::INIT_SPACE,
+        seeds = [b"deposit", escrow.key().as_ref()],
+        bump
+    )]
+    pub deposit: Account<'info, Deposit>,
     pub system_program: Program<'info, System>,
 }

@@ -92,4 +92,11 @@ pub mod landlocked {
     pub fn create_escrow(ctx: Context<CreateEscrow>) -> Result<()> {
         title_deed::create_escrow_handler(ctx)
     }
+
+    pub fn deposit_payment_to_escrow(
+        ctx: Context<DepositPaymentToEscrow>,
+        amount: u64,
+    ) -> Result<()> {
+        title_deed::deposit_payment_to_escrow_handler(ctx, amount)
+    }
 }

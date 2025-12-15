@@ -36,4 +36,16 @@ pub enum ProtocolError {
     InvalidTitleDeed,
     #[msg("Invalid title deed details")]
     InvalidTitleDeedDetails,
+    #[msg("Invalid agreement")]
+    InvalidAgreement,
+    #[msg("Payment amount does not match agreement price")]
+    PaymentAmountMismatch,
+    #[msg("Escrow is not ready for payment deposit")]
+    EscrowNotReadyForPayment,
+    #[msg("Payment already deposited")]
+    PaymentAlreadyDeposited,
+    #[msg("Arithmetic/ overflow")]
+    ArithmeticOverflow,
+    #[msg("Arithmetic underflow")]
+    ArithmeticUnderflow,
 }

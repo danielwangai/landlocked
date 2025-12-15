@@ -4,8 +4,8 @@ use anchor_lang::AccountDeserialize;
 use crate::{
     contexts::{MarkTitleForSale, SearchTitleDeedByNumber},
     error::ProtocolError,
-    state::{AgreementIndex, EscrowState, TitleNumberLookup},
-    AssignTitleDeedToOwner, CancelAgreement, CreateEscrow, MakeAgreement, SignAgreement,
+    state::{AgreementIndex, Deposit, EscrowState, TitleNumberLookup},
+    AssignTitleDeedToOwner, CancelAgreement, CreateEscrow, DepositPaymentToEscrow, MakeAgreement, SignAgreement,
 };
 
 pub fn mark_title_for_sale_handler(ctx: Context<MarkTitleForSale>, price: u64) -> Result<()> {
@@ -380,5 +380,59 @@ fn confirm_buyer(ctx: &Context<CreateEscrow>) -> Result<()> {
         ctx.accounts.agreement.buyer.authority == ctx.accounts.buyer.authority,
         ProtocolError::InvalidBuyer
     );
+    Ok(())
+}
+
+pub fn deposit_payment_to_escrow_handler(
+    ctx: Context<DepositPaymentToEscrow>,
+    amount: u64,
+) -> Result<()> {
+    let clock = Clock::get()?;
+
+    // Verify escrow state - must be TitleDeposited (title already deposited, waiting for payment)
+    require!(
+        ctx.accounts.escrow.state == EscrowState::TitleDeposited,
+        ProtocolError::EscrowNotReadyForPayment
+    );
+
+    // Verify payment amount matches agreement price
+    require!(
+        amount == ctx.accounts.agreement.price,
+        ProtocolError::PaymentAmountMismatch
+    );
+
+    // Initialize deposit account
+    let deposit = &mut ctx.accounts.deposit;
+    deposit.escrow = ctx.accounts.escrow.key();
+    deposit.amount = amount;
+    deposit.deposited_at = clock.unix_timestamp;
+    deposit.deposited_by = ctx.accounts.authority.key();
+    deposit.bump = ctx.bumps.deposit;
+
+    // Transfer lamports from buyer to deposit account using CPI to System Program
+    anchor_lang::solana_program::program::invoke(
+        &anchor_lang::solana_program::system_instruction::transfer(
+            &ctx.accounts.authority.key(),
+            ctx.accounts.deposit.to_account_info().key,
+            amount,
+        ),
+        &[
+            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.deposit.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+        ],
+    )?;
+
+    // Update escrow state to PaymentDeposited
+    let escrow = &mut ctx.accounts.escrow;
+    escrow.state = EscrowState::PaymentDeposited;
+
+    msg!(
+        "Payment of {} lamports deposited to escrow {} by buyer {}",
+        amount,
+        ctx.accounts.escrow.key(),
+        ctx.accounts.authority.key()
+    );
+
     Ok(())
 }
