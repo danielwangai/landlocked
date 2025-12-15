@@ -1,12 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_lang::AccountDeserialize;
 
-use crate::CancelAgreement;
 use crate::{
     contexts::{MarkTitleForSale, SearchTitleDeedByNumber},
     error::ProtocolError,
-    state::{AgreementIndex, TitleNumberLookup},
-    AssignTitleDeedToOwner, MakeAgreement, SignAgreement,
+    state::{AgreementIndex, EscrowState, TitleNumberLookup},
+    AssignTitleDeedToOwner, CancelAgreement, CreateEscrow, MakeAgreement, SignAgreement,
 };
 
 pub fn mark_title_for_sale_handler(ctx: Context<MarkTitleForSale>, price: u64) -> Result<()> {
@@ -52,7 +51,7 @@ pub fn assign_title_deed_to_owner_handler(
     title_deed.title_number = title_number.clone();
     title_deed.location = location;
     title_deed.acreage = acreage;
-    title_deed.disctrict_land_registry = district_land_registry;
+    title_deed.district_land_registry = district_land_registry;
     title_deed.registry_mapsheet_number = registry_mapsheet_number;
     title_deed.registration_date = clock.unix_timestamp;
     title_deed.is_for_sale = false;
@@ -146,7 +145,7 @@ pub fn search_title_deed_by_number_handler(ctx: Context<SearchTitleDeedByNumber>
         title_deed.title_number,
         title_deed.location,
         title_deed.acreage,
-        title_deed.disctrict_land_registry,
+        title_deed.district_land_registry,
         title_deed.owner.authority,
         title_deed.is_for_sale,
         ctx.accounts.searched_by.first_name,
@@ -270,7 +269,7 @@ pub fn make_agreement_handler(ctx: Context<MakeAgreement>, price: u64) -> Result
 }
 
 // land buyer signs the agreement
-pub fn sign_agreement_handler(ctx: Context<SignAgreement>) -> Result<()> {
+pub fn sign_agreement_handler(ctx: Context<SignAgreement>, price: u64) -> Result<()> {
     // ensure that the authority is the buyer
     require!(
         ctx.accounts.agreement.buyer.authority == ctx.accounts.authority.key(),
@@ -306,5 +305,80 @@ pub fn cancel_agreement_handler(ctx: Context<CancelAgreement>) -> Result<()> {
     ctx.accounts.agreement.close(ctx.accounts.authority.to_account_info())?;
 
     // TODO: store agreement history for audit purposes
+    Ok(())
+}
+
+pub fn create_escrow_handler(ctx: Context<CreateEscrow>) -> Result<()> {
+    // agreement must not have been cancelled by either party
+    // If cancelled, the account would be closed (lamports = 0)
+    require!(
+        ctx.accounts.agreement.to_account_info().lamports() > 0,
+        ProtocolError::AgreementAlreadyCancelled
+    );
+    let clock = Clock::get()?;
+    
+    // buyer and seller must be the ones that appear in the agreement
+    confirm_seller(&ctx)?;
+    confirm_buyer(&ctx)?;
+
+    // title deed must be the one in the agreement
+    require!(
+        ctx.accounts.agreement.title_deed == ctx.accounts.title_deed.key(),
+        ProtocolError::InvalidTitleDeed
+    );
+
+    // buyer must have signed the agreement
+    require!(
+        ctx.accounts.agreement.buyer_confirmation.is_some(),
+        ProtocolError::AgreementNotSignedByBuyer
+    );
+
+    // Get escrow key
+    let escrow_key = ctx.accounts.escrow.key();
+    let original_authority = ctx.accounts.title_deed.authority;
+
+    // Initialize escrow account
+    let escrow = &mut ctx.accounts.escrow;
+    escrow.agreement = ctx.accounts.agreement.key();
+    escrow.title_deed = ctx.accounts.title_deed.key();
+    escrow.seller = ctx.accounts.seller.authority;
+    escrow.buyer = ctx.accounts.buyer.authority;
+    escrow.state = EscrowState::TitleDeposited; // Set to TitleDeposited since we're transferring authority
+    escrow.created_at = clock.unix_timestamp;
+    escrow.completed_at = None;
+    escrow.cancelled_at = None;
+    escrow.bump = ctx.bumps.escrow;
+
+    // Transfer title deed authority from owner to escrow
+    // This grants escrow permission to transfer the title deed later
+    let title_deed = &mut ctx.accounts.title_deed;
+    title_deed.authority = escrow_key;
+
+    msg!(
+        "Escrow created and title deed authority transferred from {} to escrow {}",
+        original_authority,
+        escrow_key
+    );
+    
+    Ok(())
+}
+
+// helpers
+fn confirm_seller(ctx: &Context<CreateEscrow>) -> Result<()> {
+    // ensure that the authority is the seller
+    require!(
+        ctx.accounts.agreement.seller.authority == ctx.accounts.authority.key() &&
+        ctx.accounts.agreement.seller.authority == ctx.accounts.seller.authority,
+        ProtocolError::InvalidSeller
+    );
+    Ok(())
+}
+
+fn confirm_buyer(ctx: &Context<CreateEscrow>) -> Result<()> {
+    // ensure that the buyer matches the agreement
+    require!(
+        ctx.accounts.agreement.buyer.authority == ctx.accounts.buyer.authority,
+        ProtocolError::InvalidBuyer
+    );
     Ok(())
 }

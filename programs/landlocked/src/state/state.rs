@@ -76,7 +76,7 @@ pub struct TitleDeed {
     pub location: String,
     pub acreage: f64,
     #[max_len(100)]
-    pub disctrict_land_registry: String,
+    pub district_land_registry: String,
     pub registration_date: i64,
     pub registry_mapsheet_number: u64,
     pub is_for_sale: bool, // TODO: remove this field
@@ -129,5 +129,31 @@ pub struct Agreement {
 pub struct AgreementIndex {
     pub title_deed: Pubkey,
     pub agreement: Pubkey, // The active agreement for this title deed
+    pub bump: u8,
+}
+
+/// Escrow state enum
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub enum EscrowState {
+    Created, // Escrow created, waiting for title deed deposit
+    TitleDeposited, // Title deed authority transferred to escrow
+    PaymentDeposited, // Buyer has deposited payment
+    Completed, // Sale completed, title transferred to buyer
+    Cancelled, // Escrow cancelled, authority returned to seller
+}
+
+/// Escrow account for holding title deed and payment during sale
+/// PDA: [b"escrow", agreement.key().as_ref()]
+#[account]
+#[derive(InitSpace)]
+pub struct Escrow {
+    pub agreement: Pubkey,
+    pub title_deed: Pubkey,
+    pub seller: Pubkey, // Original seller/owner authority
+    pub buyer: Pubkey, // Buyer authority
+    pub state: EscrowState,
+    pub created_at: i64,
+    pub completed_at: Option<i64>,
+    pub cancelled_at: Option<i64>,
     pub bump: u8,
 }

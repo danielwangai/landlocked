@@ -81,11 +81,15 @@ pub mod landlocked {
         title_deed::make_agreement_handler(ctx, price)
     }
 
-    pub fn sign_agreement(ctx: Context<SignAgreement>) -> Result<()> {
-        title_deed::sign_agreement_handler(ctx)
+    pub fn sign_agreement(ctx: Context<SignAgreement>, price: u64) -> Result<()> {
+        title_deed::sign_agreement_handler(ctx, price)
     }
 
     pub fn cancel_agreement(ctx: Context<CancelAgreement>) -> Result<()> {
         title_deed::cancel_agreement_handler(ctx)
+    }
+
+    pub fn create_escrow(ctx: Context<CreateEscrow>) -> Result<()> {
+        title_deed::create_escrow_handler(ctx)
     }
 }

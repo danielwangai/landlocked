@@ -1,5 +1,9 @@
 use crate::{
-    Admin, Agreement, Registrar, USER_SEED, User, error::ProtocolError, state::{IdNumberClaim, ProtocolState, TitleDeed, TitleForSale, TitleNumberLookup, AgreementIndex}
+    error::ProtocolError,
+    state::{
+        AgreementIndex, Escrow, IdNumberClaim, ProtocolState, TitleDeed, TitleForSale, TitleNumberLookup,
+    },
+    Admin, Agreement, Registrar, User, USER_SEED,
 };
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
@@ -256,7 +260,7 @@ pub struct SignAgreement<'info> {
     pub authority: Signer<'info>, // Must be the buyer of the agreement
     #[account(
         mut,
-        constraint = title_deed.key() == agreement.title_deed @ ProtocolError::TitleAuthorityMismatch
+        constraint = title_deed.key() == agreement.title_deed @ ProtocolError::InvalidTitleDeed
     )]
     pub title_deed: Account<'info, TitleDeed>,
     #[account(
@@ -264,11 +268,10 @@ pub struct SignAgreement<'info> {
         seeds = [b"agreement", agreement.seller.authority.as_ref(), agreement.buyer.authority.as_ref(), title_deed.key().as_ref(), price.to_le_bytes().as_ref()],
         bump = agreement.bump,
         constraint = agreement.buyer.authority == authority.key() @ ProtocolError::Unauthorized,
-        constraint = agreement.price == price @ ProtocolError::TitleAuthorityMismatch
+        constraint = agreement.price == price @ ProtocolError::InvalidTitleDeed
     )]
     pub agreement: Account<'info, Agreement>,
 }
-
 
 #[derive(Accounts)]
 pub struct CancelAgreement<'info> {
@@ -287,5 +290,36 @@ pub struct CancelAgreement<'info> {
         bump
     )]
     pub agreement_index: Account<'info, AgreementIndex>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CreateEscrow<'info> {
+    #[account(
+        mut,
+        constraint = authority.key() == title_deed.authority @ ProtocolError::Unauthorized,
+    )]
+    pub authority: Signer<'info>, // this is the seller(current land owner)
+    // title deeed
+    #[account(
+        mut
+    )]
+    pub title_deed: Account<'info, TitleDeed>,
+    // agreement - must be signed by the buyer
+    #[account(
+        mut,
+        constraint = agreement.buyer.authority == buyer.authority.key() @ ProtocolError::Unauthorized
+    )]
+    pub agreement: Account<'info, Agreement>,
+    pub seller: Account<'info, User>,
+    pub buyer: Account<'info, User>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + Escrow::INIT_SPACE,
+        seeds = [b"escrow", agreement.key().as_ref()],
+        bump
+    )]
+    pub escrow: Account<'info, Escrow>,
     pub system_program: Program<'info, System>,
 }

@@ -22,4 +22,18 @@ pub enum ProtocolError {
     TitleNotMarkedForSale,
     #[msg("An agreement already exists for this title deed")]
     AgreementAlreadyExists,
+    #[msg("Invalid buyer authority")]
+    InvalidBuyerAuthority,
+    #[msg("Agreement already cancelled")]
+    AgreementAlreadyCancelled,
+    #[msg("Agreement not signed by buyer")]
+    AgreementNotSignedByBuyer,
+    #[msg("Invalid seller")]
+    InvalidSeller,
+    #[msg("Invalid buyer")]
+    InvalidBuyer,
+    #[msg("Invalid title deed")]
+    InvalidTitleDeed,
+    #[msg("Invalid title deed details")]
+    InvalidTitleDeedDetails,
 }

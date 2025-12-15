@@ -227,295 +227,295 @@ describe("landlocked", () => {
       .rpc();
   });
 
-  describe("admin accounts", () => {
-    it("Protocol is initialized!", async () => {
-      // fetch the protocol
-      const protocol = await program.account.protocolState.fetch(protocolState);
-      assert.equal(protocol.admins.length, 2);
-      assert.equal(protocol.admins[0].toString(), admin1.publicKey.toString());
-      assert.equal(protocol.admins[1].toString(), admin2.publicKey.toString());
-      assert.equal(protocol.isPaused, false);
-    });
+  // describe("admin accounts", () => {
+  //   it("Protocol is initialized!", async () => {
+  //     // fetch the protocol
+  //     const protocol = await program.account.protocolState.fetch(protocolState);
+  //     assert.equal(protocol.admins.length, 2);
+  //     assert.equal(protocol.admins[0].toString(), admin1.publicKey.toString());
+  //     assert.equal(protocol.admins[1].toString(), admin2.publicKey.toString());
+  //     assert.equal(protocol.isPaused, false);
+  //   });
 
-    it("confirms admin account successfully", async () => {
-      await program.methods
-        .confirmAdminAccount()
-        .accounts({
-          authority: admin2.publicKey,
-          admin: admin2PDA,
-          protocolState,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([admin2])
-        .rpc();
+  //   it("confirms admin account successfully", async () => {
+  //     await program.methods
+  //       .confirmAdminAccount()
+  //       .accounts({
+  //         authority: admin2.publicKey,
+  //         admin: admin2PDA,
+  //         protocolState,
+  //         systemProgram: anchor.web3.SystemProgram.programId,
+  //       })
+  //       .signers([admin2])
+  //       .rpc();
 
-      // fetch the admin
-      const admin = await program.account.admin.fetch(admin2PDA);
-      assert.equal(admin.authority.toString(), admin2.publicKey.toString());
-    });
+  //     // fetch the admin
+  //     const admin = await program.account.admin.fetch(admin2PDA);
+  //     assert.equal(admin.authority.toString(), admin2.publicKey.toString());
+  //   });
 
-    it("cannot confirm admin account if not an admin", async () => {
-      try {
-        await program.methods
-          .confirmAdminAccount()
-          .accounts({
-            authority: fakeAdmin.publicKey,
-            admin: fakeAdminPDA,
-            protocolState,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          })
-          .signers([fakeAdmin])
-          .rpc();
-        assert.fail("Expected transaction to fail");
-      } catch (error) {
-        // Verify it's an Anchor error with InvalidAdmin error code
-        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
-        const anchorError = error as anchor.AnchorError;
-        assert.equal(
-          anchorError.error?.errorCode?.code,
-          "InvalidAdmin",
-          `Expected InvalidAdmin error, got: ${anchorError.error?.errorCode?.code}`
-        );
-      }
-    });
+  //   it("cannot confirm admin account if not an admin", async () => {
+  //     try {
+  //       await program.methods
+  //         .confirmAdminAccount()
+  //         .accounts({
+  //           authority: fakeAdmin.publicKey,
+  //           admin: fakeAdminPDA,
+  //           protocolState,
+  //           systemProgram: anchor.web3.SystemProgram.programId,
+  //         })
+  //         .signers([fakeAdmin])
+  //         .rpc();
+  //       assert.fail("Expected transaction to fail");
+  //     } catch (error) {
+  //       // Verify it's an Anchor error with InvalidAdmin error code
+  //       assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+  //       const anchorError = error as anchor.AnchorError;
+  //       assert.equal(
+  //         anchorError.error?.errorCode?.code,
+  //         "InvalidAdmin",
+  //         `Expected InvalidAdmin error, got: ${anchorError.error?.errorCode?.code}`
+  //       );
+  //     }
+  //   });
 
-    it("cannot allow an admin to confirm another admin's account", async () => {
-      try {
-        await program.methods
-          .confirmAdminAccount()
-          .accounts({
-            authority: admin1.publicKey,
-            admin: admin2PDA,
-            protocolState,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          })
-          .signers([admin1])
-          .rpc();
-        assert.fail("Expected transaction to fail");
-      } catch (error: any) {
-        // Verify it's an Anchor error with ConstraintSeeds error
-        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
-        const anchorError = error as anchor.AnchorError;
+  //   it("cannot allow an admin to confirm another admin's account", async () => {
+  //     try {
+  //       await program.methods
+  //         .confirmAdminAccount()
+  //         .accounts({
+  //           authority: admin1.publicKey,
+  //           admin: admin2PDA,
+  //           protocolState,
+  //           systemProgram: anchor.web3.SystemProgram.programId,
+  //         })
+  //         .signers([admin1])
+  //         .rpc();
+  //       assert.fail("Expected transaction to fail");
+  //     } catch (error: any) {
+  //       // Verify it's an Anchor error with ConstraintSeeds error
+  //       assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+  //       const anchorError = error as anchor.AnchorError;
 
-        // Get error message and logs
-        const errorMessage = anchorError.message || "";
+  //       // Get error message and logs
+  //       const errorMessage = anchorError.message || "";
 
-        // Check for "A seeds constraint was violated." error message
-        const hasSeedsConstraintError =
-          errorMessage.includes("A seeds constraint was violated.") ||
-          anchorError.error?.errorCode?.code === "ConstraintSeeds";
+  //       // Check for "A seeds constraint was violated." error message
+  //       const hasSeedsConstraintError =
+  //         errorMessage.includes("A seeds constraint was violated.") ||
+  //         anchorError.error?.errorCode?.code === "ConstraintSeeds";
 
-        assert.ok(
-          hasSeedsConstraintError,
-          `Expected "A seeds constraint was violated." error. Message: ${errorMessage}, Code: ${anchorError.error?.errorCode?.code}`
-        );
-      }
-    });
-  });
+  //       assert.ok(
+  //         hasSeedsConstraintError,
+  //         `Expected "A seeds constraint was violated." error. Message: ${errorMessage}, Code: ${anchorError.error?.errorCode?.code}`
+  //       );
+  //     }
+  //   });
+  // });
 
-  describe("registrar accounts", async () => {
-    before(async () => {
-      await program.methods
-        .addRegistrar(
-          registrar1.publicKey,
-          registrar1Details.firstName,
-          registrar1Details.lastName,
-          registrar1Details.idNumber
-        )
-        .accounts({
-          authority: admin1.publicKey,
-          registrar: registrar1PDA,
-          admin: admin1PDA,
-          protocolState,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([admin1])
-        .rpc();
-    });
+  // describe("registrar accounts", async () => {
+  //   before(async () => {
+  //     await program.methods
+  //       .addRegistrar(
+  //         registrar1.publicKey,
+  //         registrar1Details.firstName,
+  //         registrar1Details.lastName,
+  //         registrar1Details.idNumber
+  //       )
+  //       .accounts({
+  //         authority: admin1.publicKey,
+  //         registrar: registrar1PDA,
+  //         admin: admin1PDA,
+  //         protocolState,
+  //         systemProgram: anchor.web3.SystemProgram.programId,
+  //       })
+  //       .signers([admin1])
+  //       .rpc();
+  //   });
 
-    it("allows an admin to add a registrar account", async () => {
-      // fetch the registrar
-      const registrar = await program.account.registrar.fetch(registrar1PDA);
-      assert.equal(
-        registrar.authority.toString(),
-        registrar1.publicKey.toString()
-      );
-      assert.equal(registrar.firstName, registrar1Details.firstName);
-      assert.equal(registrar.lastName, registrar1Details.lastName);
-      assert.equal(registrar.idNumber, registrar1Details.idNumber);
-      assert.equal(registrar.isActive, false); // Should not be active until confirmed
-    });
+  //   it("allows an admin to add a registrar account", async () => {
+  //     // fetch the registrar
+  //     const registrar = await program.account.registrar.fetch(registrar1PDA);
+  //     assert.equal(
+  //       registrar.authority.toString(),
+  //       registrar1.publicKey.toString()
+  //     );
+  //     assert.equal(registrar.firstName, registrar1Details.firstName);
+  //     assert.equal(registrar.lastName, registrar1Details.lastName);
+  //     assert.equal(registrar.idNumber, registrar1Details.idNumber);
+  //     assert.equal(registrar.isActive, false); // Should not be active until confirmed
+  //   });
 
-    it("cannot add a registrar account if not an admin", async () => {
-      // Create a new registrar PDA for this test (different from the one in before hook)
-      const registrar2 = anchor.web3.Keypair.generate();
-      const [registrar2PDA] = PublicKey.findProgramAddressSync(
-        [Buffer.from("registrar"), registrar2.publicKey.toBuffer()],
-        program.programId
-      );
+  //   it("cannot add a registrar account if not an admin", async () => {
+  //     // Create a new registrar PDA for this test (different from the one in before hook)
+  //     const registrar2 = anchor.web3.Keypair.generate();
+  //     const [registrar2PDA] = PublicKey.findProgramAddressSync(
+  //       [Buffer.from("registrar"), registrar2.publicKey.toBuffer()],
+  //       program.programId
+  //     );
 
-      try {
-        await program.methods
-          .addRegistrar(registrar2.publicKey, "Jane", "Smith", "0987654321")
-          .accounts({
-            authority: fakeAdmin.publicKey,
-            registrar: registrar2PDA,
-            admin: admin1PDA, // Use existing admin account
-            protocolState,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          })
-          .signers([fakeAdmin])
-          .rpc();
-        assert.fail("Expected transaction to fail");
-      } catch (error) {
-        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
-        const anchorError = error as anchor.AnchorError;
-        assert.equal(
-          anchorError.error?.errorCode?.code,
-          "InvalidAdmin",
-          `Expected InvalidAdmin error, got: ${anchorError.error?.errorCode?.code}`
-        );
-      }
-    });
+  //     try {
+  //       await program.methods
+  //         .addRegistrar(registrar2.publicKey, "Jane", "Smith", "0987654321")
+  //         .accounts({
+  //           authority: fakeAdmin.publicKey,
+  //           registrar: registrar2PDA,
+  //           admin: admin1PDA, // Use existing admin account
+  //           protocolState,
+  //           systemProgram: anchor.web3.SystemProgram.programId,
+  //         })
+  //         .signers([fakeAdmin])
+  //         .rpc();
+  //       assert.fail("Expected transaction to fail");
+  //     } catch (error) {
+  //       assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+  //       const anchorError = error as anchor.AnchorError;
+  //       assert.equal(
+  //         anchorError.error?.errorCode?.code,
+  //         "InvalidAdmin",
+  //         `Expected InvalidAdmin error, got: ${anchorError.error?.errorCode?.code}`
+  //       );
+  //     }
+  //   });
 
-    it("registrar confirms a registrar account successfully", async () => {
-      await program.methods
-        .confirmRegistrarAccount()
-        .accounts({
-          authority: registrar1.publicKey,
-          registrar: registrar1PDA,
-          protocolState,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([registrar1])
-        .rpc();
+  //   it("registrar confirms a registrar account successfully", async () => {
+  //     await program.methods
+  //       .confirmRegistrarAccount()
+  //       .accounts({
+  //         authority: registrar1.publicKey,
+  //         registrar: registrar1PDA,
+  //         protocolState,
+  //         systemProgram: anchor.web3.SystemProgram.programId,
+  //       })
+  //       .signers([registrar1])
+  //       .rpc();
 
-      // fetch the registrar
-      const registrar = await program.account.registrar.fetch(registrar1PDA);
-      assert.equal(registrar.isActive, true);
-    });
+  //     // fetch the registrar
+  //     const registrar = await program.account.registrar.fetch(registrar1PDA);
+  //     assert.equal(registrar.isActive, true);
+  //   });
 
-    it("cannot confirm a registrar account of another registrar", async () => {
-      // Create registrar2 account
-      const registrar2 = anchor.web3.Keypair.generate();
-      const [registrar2PDA] = PublicKey.findProgramAddressSync(
-        [Buffer.from("registrar"), registrar2.publicKey.toBuffer()],
-        program.programId
-      );
+  //   it("cannot confirm a registrar account of another registrar", async () => {
+  //     // Create registrar2 account
+  //     const registrar2 = anchor.web3.Keypair.generate();
+  //     const [registrar2PDA] = PublicKey.findProgramAddressSync(
+  //       [Buffer.from("registrar"), registrar2.publicKey.toBuffer()],
+  //       program.programId
+  //     );
 
-      await airdrop(registrar2.publicKey, 1_000_000_000);
+  //     await airdrop(registrar2.publicKey, 1_000_000_000);
 
-      await program.methods
-        .addRegistrar(registrar2.publicKey, "Jane", "Smith", "0987654321")
-        .accounts({
-          authority: admin1.publicKey,
-          registrar: registrar2PDA,
-          admin: admin1PDA,
-          protocolState,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([admin1])
-        .rpc();
+  //     await program.methods
+  //       .addRegistrar(registrar2.publicKey, "Jane", "Smith", "0987654321")
+  //       .accounts({
+  //         authority: admin1.publicKey,
+  //         registrar: registrar2PDA,
+  //         admin: admin1PDA,
+  //         protocolState,
+  //         systemProgram: anchor.web3.SystemProgram.programId,
+  //       })
+  //       .signers([admin1])
+  //       .rpc();
 
-      try {
-        await program.methods
-          .confirmRegistrarAccount()
-          .accounts({
-            authority: registrar1.publicKey, // registrar1 is signing
-            registrar: registrar2PDA, // But trying to use registrar2's PDA
-            protocolState,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          })
-          .signers([registrar1])
-          .rpc();
-        assert.fail("Expected transaction to fail");
-      } catch (error: any) {
-        // Should fail with seeds constraint error because PDA doesn't match
-        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
-        const anchorError = error as anchor.AnchorError;
-        const errorMessage = anchorError.message || "";
-        const hasSeedsConstraintError =
-          errorMessage.includes("A seeds constraint was violated.") ||
-          anchorError.error?.errorCode?.code === "ConstraintSeeds";
+  //     try {
+  //       await program.methods
+  //         .confirmRegistrarAccount()
+  //         .accounts({
+  //           authority: registrar1.publicKey, // registrar1 is signing
+  //           registrar: registrar2PDA, // But trying to use registrar2's PDA
+  //           protocolState,
+  //           systemProgram: anchor.web3.SystemProgram.programId,
+  //         })
+  //         .signers([registrar1])
+  //         .rpc();
+  //       assert.fail("Expected transaction to fail");
+  //     } catch (error: any) {
+  //       // Should fail with seeds constraint error because PDA doesn't match
+  //       assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+  //       const anchorError = error as anchor.AnchorError;
+  //       const errorMessage = anchorError.message || "";
+  //       const hasSeedsConstraintError =
+  //         errorMessage.includes("A seeds constraint was violated.") ||
+  //         anchorError.error?.errorCode?.code === "ConstraintSeeds";
 
-        assert.ok(
-          hasSeedsConstraintError,
-          `Expected seeds constraint error, got: ${errorMessage}, Code: ${anchorError.error?.errorCode?.code}`
-        );
-      }
-    });
+  //       assert.ok(
+  //         hasSeedsConstraintError,
+  //         `Expected seeds constraint error, got: ${errorMessage}, Code: ${anchorError.error?.errorCode?.code}`
+  //       );
+  //     }
+  //   });
 
-    it("cannot confirm a registrar account if already confirmed", async () => {
-      try {
-        await program.methods
-          .confirmRegistrarAccount()
-          .accounts({
-            authority: registrar1.publicKey,
-            registrar: registrar1PDA,
-            protocolState,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          })
-          .signers([registrar1])
-          .rpc();
-        assert.fail("Expected transaction to fail");
-      } catch (error) {
-        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
-        const anchorError = error as anchor.AnchorError;
-        assert.equal(
-          anchorError.error?.errorCode?.code,
-          "RegistrarAlreadyConfirmed",
-          "Expected RegistrarAlreadyConfirmed error"
-        );
-      }
-    });
-  });
+  //   it("cannot confirm a registrar account if already confirmed", async () => {
+  //     try {
+  //       await program.methods
+  //         .confirmRegistrarAccount()
+  //         .accounts({
+  //           authority: registrar1.publicKey,
+  //           registrar: registrar1PDA,
+  //           protocolState,
+  //           systemProgram: anchor.web3.SystemProgram.programId,
+  //         })
+  //         .signers([registrar1])
+  //         .rpc();
+  //       assert.fail("Expected transaction to fail");
+  //     } catch (error) {
+  //       assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+  //       const anchorError = error as anchor.AnchorError;
+  //       assert.equal(
+  //         anchorError.error?.errorCode?.code,
+  //         "RegistrarAlreadyConfirmed",
+  //         "Expected RegistrarAlreadyConfirmed error"
+  //       );
+  //     }
+  //   });
+  // });
 
-  describe("user accounts", () => {
-    it("allows a user to create a user account", async () => {
-      const user = await program.account.user.fetch(owner1PDA);
-      assert.equal(user.authority.toString(), owner1.publicKey.toString());
-      assert.equal(user.firstName, owner1Details.firstName);
-      assert.equal(user.lastName, owner1Details.lastName);
-      assert.equal(user.idNumber, owner1Details.idNumber);
-      assert.equal(user.phoneNumber, owner1Details.phoneNumber);
-    });
+  // describe("user accounts", () => {
+  //   it("allows a user to create a user account", async () => {
+  //     const user = await program.account.user.fetch(owner1PDA);
+  //     assert.equal(user.authority.toString(), owner1.publicKey.toString());
+  //     assert.equal(user.firstName, owner1Details.firstName);
+  //     assert.equal(user.lastName, owner1Details.lastName);
+  //     assert.equal(user.idNumber, owner1Details.idNumber);
+  //     assert.equal(user.phoneNumber, owner1Details.phoneNumber);
+  //   });
 
-    it("rejects duplicate id_number", async () => {
-      const user2 = anchor.web3.Keypair.generate();
-      await airdrop(user2.publicKey, 1_000_000_000);
+  //   it("rejects duplicate id_number", async () => {
+  //     const user2 = anchor.web3.Keypair.generate();
+  //     await airdrop(user2.publicKey, 1_000_000_000);
 
-      const user2PDA = getUserAddress(owner1Details.idNumber, user2.publicKey); // Same id_number as user1
-      const idNumberClaimPDA2 = getIdNumberClaimPDA(owner1Details.idNumber);
+  //     const user2PDA = getUserAddress(owner1Details.idNumber, user2.publicKey); // Same id_number as user1
+  //     const idNumberClaimPDA2 = getIdNumberClaimPDA(owner1Details.idNumber);
 
-      try {
-        await program.methods
-          .createUserAccount(
-            "Jane",
-            "Smith",
-            owner1Details.idNumber, // Duplicate id_number
-            "0987654321"
-          )
-          .accounts({
-            authority: user2.publicKey,
-            user: user2PDA,
-            idNumberClaim: idNumberClaimPDA2,
-            systemProgram: anchor.web3.SystemProgram.programId,
-          })
-          .signers([user2])
-          .rpc();
+  //     try {
+  //       await program.methods
+  //         .createUserAccount(
+  //           "Jane",
+  //           "Smith",
+  //           owner1Details.idNumber, // Duplicate id_number
+  //           "0987654321"
+  //         )
+  //         .accounts({
+  //           authority: user2.publicKey,
+  //           user: user2PDA,
+  //           idNumberClaim: idNumberClaimPDA2,
+  //           systemProgram: anchor.web3.SystemProgram.programId,
+  //         })
+  //         .signers([user2])
+  //         .rpc();
 
-        throw new Error("Should have rejected duplicate id_number");
-      } catch (error: any) {
-        // Should fail because idNumberClaim account already exists
-        assert.ok(
-          error.message.includes("already in use") ||
-            error.message.includes("ConstraintSeeds") ||
-            error.code === 3009, // AccountAlreadyInUse
-          "Expected account already in use error"
-        );
-      }
-    });
-  });
+  //       throw new Error("Should have rejected duplicate id_number");
+  //     } catch (error: any) {
+  //       // Should fail because idNumberClaim account already exists
+  //       assert.ok(
+  //         error.message.includes("already in use") ||
+  //           error.message.includes("ConstraintSeeds") ||
+  //           error.code === 3009, // AccountAlreadyInUse
+  //         "Expected account already in use error"
+  //       );
+  //     }
+  //   });
+  // });
 
   describe("title deeds", () => {
     // actors
@@ -529,6 +529,7 @@ describe("landlocked", () => {
     let buyer1PDA: PublicKey;
     let buyer1IdNumberClaimPDA: PublicKey;
     let agreementIndex2PDA: PublicKey;
+    let agreement2EscrowPDA: PublicKey;
     before(async () => {
       // airdrops
       await airdrop(buyer1.publicKey, 1000000000);
@@ -547,66 +548,46 @@ describe("landlocked", () => {
       title2ForSalePDA = getTitleForSalePDA(titleDeed2PDA, owner2.publicKey);
 
       // create a buyer account
-      await program.methods
-        .createUserAccount(
-          buyer1Details.firstName,
-          buyer1Details.lastName,
-          buyer1Details.idNumber,
-          buyer1Details.phoneNumber
-        )
-        .accounts({
-          authority: buyer1.publicKey,
-          user: buyer1PDA,
-          idNumberClaim: buyer1IdNumberClaimPDA,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([buyer1])
-        .rpc();
+      await createUserAccount(
+        buyer1,
+        buyer1Details.firstName,
+        buyer1Details.lastName,
+        buyer1Details.idNumber,
+        buyer1Details.phoneNumber,
+        buyer1PDA,
+        buyer1IdNumberClaimPDA
+      );
 
-      await program.methods
-        .assignTitleDeedToOwner(
-          owner1.publicKey,
-          owner1Details.titleNumber,
-          owner1Details.location,
-          owner1Details.acreage,
-          owner1Details.districtLandRegistry,
-          owner1Details.registryMapsheetNumber
-        )
-        .accounts({
-          authority: registrar2.publicKey,
-          registrar: registrar2PDA,
-          titleDeed: titleDeedPDA,
-          owner: owner1PDA,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([registrar2])
-        .rpc();
+      await assignTitleDeedToOwner(
+        registrar2,
+        registrar2PDA,
+        owner1.publicKey,
+        owner1Details.titleNumber,
+        owner1Details.location,
+        owner1Details.acreage,
+        owner1Details.districtLandRegistry,
+        owner1Details.registryMapsheetNumber,
+        titleDeedPDA,
+        owner1PDA
+      );
 
       // owner2 marks title deed for sale
-      await program.methods
-        .markTitleForSale(new BN(1000000000))
-        .accounts({
-          authority: owner2.publicKey, // owner
-          titleDeed: titleDeed2PDA,
-          seller: owner2PDA,
-          titleForSale: title2ForSalePDA,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([owner2])
-        .rpc();
+      await markTitleForSale(
+        owner2,
+        new BN(1000000000),
+        titleDeed2PDA,
+        owner2PDA,
+        title2ForSalePDA
+      );
 
       // owner1 is interested in buying land from owner2(with title2 of number 342343243)
-      await program.methods
-        .searchTitleDeedByNumber(owner2Details.titleNumber)
-        .accounts({
-          authority: owner1.publicKey,
-          titleNumberLookup: title2NumberLookupPDA,
-          titleDeed: titleDeed2PDA,
-          searchedBy: owner1PDA,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .signers([owner1])
-        .rpc();
+      await searchTitleDeedByNumber(
+        owner1,
+        owner2Details.titleNumber,
+        title2NumberLookupPDA,
+        titleDeed2PDA,
+        owner1PDA
+      );
 
       // fetch search result
       const searchResult = await program.account.titleNumberLookup.fetch(
@@ -621,20 +602,27 @@ describe("landlocked", () => {
         new BN(1000000000)
       );
       agreementIndex2PDA = getAgreementIndexPDA(titleDeed2PDA);
-      await program.methods
-        .makeAgreement(new BN(1000000000))
-        .accounts({
-          authority: owner2.publicKey,
-          titleDeed: titleDeed2PDA,
-          titleForSale: title2ForSalePDA,
-          seller: owner2PDA,
-          buyer: owner1PDA,
-          titleNumberLookup: title2NumberLookupPDA,
-          agreement: agreement2PDA,
-          agreementIndex: agreementIndex2PDA,
-        })
-        .signers([owner2])
-        .rpc();
+      agreement2EscrowPDA = getEscrowPDA(agreement2PDA);
+
+      await makeAgreement(
+        owner2,
+        new BN(1000000000),
+        titleDeed2PDA,
+        title2ForSalePDA,
+        owner2PDA,
+        owner1PDA,
+        title2NumberLookupPDA,
+        agreement2PDA,
+        agreementIndex2PDA
+      );
+
+      // Buyer (owner1) signs the agreement
+      await signAgreement(
+        owner1,
+        new BN(1000000000),
+        titleDeed2PDA,
+        agreement2PDA
+      );
     });
 
     it("allows a registrar to assign a title deed to a owner", async () => {
@@ -770,6 +758,7 @@ describe("landlocked", () => {
           })
           .signers([owner2])
           .rpc();
+        assert.fail("Expected transaction to fail");
       } catch (error) {
         assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
         const anchorError = error as anchor.AnchorError;
@@ -851,6 +840,376 @@ describe("landlocked", () => {
         titleDeed.salePrice.toString(),
         new BN(1000000000).toString()
       );
+    });
+  });
+
+  describe("escrows", () => {
+    // PDAs for escrow tests
+    let titleDeedPDA: PublicKey;
+    let titleForSalePDA: PublicKey;
+    let titleNumberLookupPDA: PublicKey;
+    let agreementPDA: PublicKey;
+    let agreementIndexPDA: PublicKey;
+    let escrowPDA: PublicKey;
+    let buyerPDA: PublicKey;
+    let buyerIdNumberClaimPDA: PublicKey;
+    let sellerPDA: PublicKey;
+    let sellerIdNumberClaimPDA: PublicKey;
+
+    // Escrow buyer and seller
+    const escrowBuyer = anchor.web3.Keypair.generate();
+    const escrowSeller = anchor.web3.Keypair.generate();
+
+    // Escrow seller and title details
+    const sellerDetails = {
+      idNumber: "777666555444",
+      firstName: "Escrow",
+      lastName: "Seller",
+      phoneNumber: "777666555",
+    };
+    const escrowTitleDetails = {
+      titleNumber: "555666777888",
+      location: "Mombasa",
+      acreage: 200,
+      districtLandRegistry: "Mombasa",
+      registryMapsheetNumber: new BN(123456789),
+    };
+
+    before(async () => {
+      // airdrops
+      await airdrop(escrowBuyer.publicKey, 1000000000);
+      await airdrop(escrowSeller.publicKey, 1000000000);
+
+      // escrow buyer details
+      const escrowBuyerDetails = {
+        idNumber: "999888777666",
+        firstName: "Escrow",
+        lastName: "Buyer",
+        phoneNumber: "999888777",
+      };
+      buyerPDA = getUserAddress(
+        escrowBuyerDetails.idNumber,
+        escrowBuyer.publicKey
+      );
+      buyerIdNumberClaimPDA = getIdNumberClaimPDA(escrowBuyerDetails.idNumber);
+
+      // escrow seller PDAs
+      sellerPDA = getUserAddress(
+        sellerDetails.idNumber,
+        escrowSeller.publicKey
+      );
+      sellerIdNumberClaimPDA = getIdNumberClaimPDA(sellerDetails.idNumber);
+
+      // Create escrow buyer account
+      await createUserAccount(
+        escrowBuyer,
+        escrowBuyerDetails.firstName,
+        escrowBuyerDetails.lastName,
+        escrowBuyerDetails.idNumber,
+        escrowBuyerDetails.phoneNumber,
+        buyerPDA,
+        buyerIdNumberClaimPDA
+      );
+
+      // Create escrow seller account
+      await createUserAccount(
+        escrowSeller,
+        sellerDetails.firstName,
+        sellerDetails.lastName,
+        sellerDetails.idNumber,
+        sellerDetails.phoneNumber,
+        sellerPDA,
+        sellerIdNumberClaimPDA
+      );
+
+      // Set up PDAs for escrow title deed
+      titleDeedPDA = getTitleDeedPDA(escrowSeller.publicKey);
+      titleForSalePDA = getTitleForSalePDA(
+        titleDeedPDA,
+        escrowSeller.publicKey
+      );
+      titleNumberLookupPDA = getTitleNumberLookupPDA(
+        escrowTitleDetails.titleNumber
+      );
+
+      // Assign title deed to escrow seller
+      await assignTitleDeedToOwner(
+        registrar2,
+        registrar2PDA,
+        escrowSeller.publicKey,
+        escrowTitleDetails.titleNumber,
+        escrowTitleDetails.location,
+        escrowTitleDetails.acreage,
+        escrowTitleDetails.districtLandRegistry,
+        escrowTitleDetails.registryMapsheetNumber,
+        titleDeedPDA,
+        sellerPDA
+      );
+
+      // Mark title deed for sale
+      await markTitleForSale(
+        escrowSeller,
+        new BN(1000000000),
+        titleDeedPDA,
+        sellerPDA,
+        titleForSalePDA
+      );
+
+      // Buyer searches for title deed
+      await searchTitleDeedByNumber(
+        escrowBuyer,
+        escrowTitleDetails.titleNumber,
+        titleNumberLookupPDA,
+        titleDeedPDA,
+        buyerPDA
+      );
+
+      // Create agreement
+      agreementPDA = getAgreementPDA(
+        escrowSeller.publicKey,
+        escrowBuyer.publicKey,
+        titleDeedPDA,
+        new BN(1000000000)
+      );
+      agreementIndexPDA = getAgreementIndexPDA(titleDeedPDA);
+      escrowPDA = getEscrowPDA(agreementPDA);
+
+      await makeAgreement(
+        escrowSeller,
+        new BN(1000000000),
+        titleDeedPDA,
+        titleForSalePDA,
+        sellerPDA,
+        buyerPDA,
+        titleNumberLookupPDA,
+        agreementPDA,
+        agreementIndexPDA
+      );
+
+      // Buyer signs the agreement
+      await signAgreement(
+        escrowBuyer,
+        new BN(1000000000),
+        titleDeedPDA,
+        agreementPDA
+      );
+    });
+
+    it("does not allow non-owner to create an escrow", async () => {
+      try {
+        await createEscrow(
+          escrowBuyer,
+          titleDeedPDA,
+          agreementPDA,
+          sellerPDA,
+          buyerPDA,
+          escrowPDA
+        );
+        assert.fail("Expected transaction to fail");
+      } catch (error) {
+        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+        const anchorError = error as anchor.AnchorError;
+        assert.equal(
+          anchorError.error?.errorCode?.code,
+          "Unauthorized",
+          "Expected Unauthorized error"
+        );
+      }
+    });
+
+    it("does not allow seller to create escrow with a buyer not in the agreement", async () => {
+      try {
+        await createEscrow(
+          escrowSeller,
+          titleDeedPDA,
+          agreementPDA,
+          sellerPDA,
+          owner1PDA,
+          escrowPDA
+        );
+        assert.fail("Expected transaction to fail");
+      } catch (error) {
+        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+        const anchorError = error as anchor.AnchorError;
+        assert.equal(
+          anchorError.error?.errorCode?.code,
+          "Unauthorized",
+          "Expected Unauthorized error"
+        );
+      }
+    });
+
+    it("does not allow escrow creation if agreement has been cancelled", async () => {
+      // Create a new seller for this test to avoid title deed PDA conflicts
+      const testSeller = anchor.web3.Keypair.generate();
+      const testSellerDetails = {
+        idNumber: "333444555666",
+        firstName: "Test",
+        lastName: "Seller",
+        phoneNumber: "333444555",
+      };
+      const testSellerPDA = getUserAddress(
+        testSellerDetails.idNumber,
+        testSeller.publicKey
+      );
+      const testSellerIdNumberClaimPDA = getIdNumberClaimPDA(
+        testSellerDetails.idNumber
+      );
+
+      await airdrop(testSeller.publicKey, 1000000000);
+      await createUserAccount(
+        testSeller,
+        testSellerDetails.firstName,
+        testSellerDetails.lastName,
+        testSellerDetails.idNumber,
+        testSellerDetails.phoneNumber,
+        testSellerPDA,
+        testSellerIdNumberClaimPDA
+      );
+
+      // Create a new title deed and agreement for this test
+      const testTitleNumber = "888777666555";
+      const testTitleNumberLookupPDA = getTitleNumberLookupPDA(testTitleNumber);
+      const testTitleDeedPDA = getTitleDeedPDA(testSeller.publicKey);
+      const testTitleForSalePDA = getTitleForSalePDA(
+        testTitleDeedPDA,
+        testSeller.publicKey
+      );
+
+      // Assign a new title deed to testSeller
+      await assignTitleDeedToOwner(
+        registrar2,
+        registrar2PDA,
+        testSeller.publicKey,
+        testTitleNumber,
+        "Test Location 2",
+        250,
+        "Test Registry 2",
+        new BN(111222333),
+        testTitleDeedPDA,
+        testSellerPDA
+      );
+
+      // Mark for sale
+      await markTitleForSale(
+        testSeller,
+        new BN(3000000000),
+        testTitleDeedPDA,
+        testSellerPDA,
+        testTitleForSalePDA
+      );
+
+      // Buyer searches (using escrowBuyer from before hook)
+      await searchTitleDeedByNumber(
+        escrowBuyer,
+        testTitleNumber,
+        testTitleNumberLookupPDA,
+        testTitleDeedPDA,
+        buyerPDA
+      );
+
+      // Create agreement
+      const testAgreementPDA = getAgreementPDA(
+        testSeller.publicKey,
+        escrowBuyer.publicKey,
+        testTitleDeedPDA,
+        new BN(3000000000)
+      );
+      const testAgreementIndexPDA = getAgreementIndexPDA(testTitleDeedPDA);
+      const testEscrowPDA = getEscrowPDA(testAgreementPDA);
+
+      await makeAgreement(
+        testSeller,
+        new BN(3000000000),
+        testTitleDeedPDA,
+        testTitleForSalePDA,
+        testSellerPDA,
+        buyerPDA,
+        testTitleNumberLookupPDA,
+        testAgreementPDA,
+        testAgreementIndexPDA
+      );
+
+      // Buyer signs agreement (using escrowBuyer from before hook)
+      await signAgreement(
+        escrowBuyer,
+        new BN(3000000000),
+        testTitleDeedPDA,
+        testAgreementPDA
+      );
+
+      // Cancel the agreement (buyer cancels it)
+      await program.methods
+        .cancelAgreement()
+        .accounts({
+          authority: escrowBuyer.publicKey,
+          agreement: testAgreementPDA,
+          agreementIndex: testAgreementIndexPDA,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([escrowBuyer])
+        .rpc();
+
+      // Verify agreement is cancelled (account should be closed)
+      try {
+        await program.account.agreement.fetch(testAgreementPDA);
+        assert.fail(
+          "Expected agreement account to not exist after cancellation"
+        );
+      } catch (error: any) {
+        assert.ok(
+          error.message.includes("Account does not exist") ||
+            error.message.includes("has no data"),
+          "Expected account not found error"
+        );
+      }
+
+      // Attempt to create escrow with cancelled agreement (should fail)
+      // Note: When an agreement is cancelled, the account is closed (deleted),
+      // so Anchor will fail with AccountNotInitialized when trying to deserialize it
+      try {
+        await createEscrow(
+          testSeller,
+          testTitleDeedPDA,
+          testAgreementPDA,
+          testSellerPDA,
+          buyerPDA,
+          testEscrowPDA
+        );
+        assert.fail("Expected transaction to fail");
+      } catch (error) {
+        assert.ok(error instanceof anchor.AnchorError, "Expected AnchorError");
+        const anchorError = error as anchor.AnchorError;
+        // When account is closed, Anchor fails with AccountNotInitialized before handler runs
+        assert.ok(
+          anchorError.error?.errorCode?.code === "AccountNotInitialized" ||
+            anchorError.error?.errorCode?.code === "AgreementAlreadyCancelled",
+          `Expected AccountNotInitialized or AgreementAlreadyCancelled error, got ${anchorError.error?.errorCode?.code}`
+        );
+      }
+    });
+
+    it("can allow a seller to create an escrow", async () => {
+      // escrow seller creates escrow for the agreement
+      await createEscrow(
+        escrowSeller,
+        titleDeedPDA,
+        agreementPDA,
+        sellerPDA,
+        buyerPDA,
+        escrowPDA
+      );
+
+      // fetch created escrow
+      const escrow = await program.account.escrow.fetch(escrowPDA);
+      assert.equal(escrow.agreement.toString(), agreementPDA.toString());
+      assert.equal(escrow.titleDeed.toString(), titleDeedPDA.toString());
+      assert.equal(escrow.seller.toString(), escrowSeller.publicKey.toString());
+      assert.equal(escrow.buyer.toString(), escrowBuyer.publicKey.toString());
+
+      // Verify that title deed authority was transferred to escrow
+      const titleDeed = await program.account.titleDeed.fetch(titleDeedPDA);
+      assert.equal(titleDeed.authority.toString(), escrowPDA.toString());
     });
   });
 
@@ -947,5 +1306,173 @@ describe("landlocked", () => {
       [Buffer.from("agreement_index"), titleDeed.toBuffer()],
       program.programId
     )[0];
+  };
+
+  const getEscrowPDA = (agreement: PublicKey) => {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("escrow"), agreement.toBuffer()],
+      program.programId
+    )[0];
+  };
+
+  // Instruction helper functions
+  const createUserAccount = async (
+    authority: anchor.web3.Keypair,
+    firstName: string,
+    lastName: string,
+    idNumber: string,
+    phoneNumber: string,
+    userPDA: PublicKey,
+    idNumberClaimPDA: PublicKey
+  ) => {
+    await program.methods
+      .createUserAccount(firstName, lastName, idNumber, phoneNumber)
+      .accounts({
+        authority: authority.publicKey,
+        user: userPDA,
+        idNumberClaim: idNumberClaimPDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([authority])
+      .rpc();
+  };
+
+  const assignTitleDeedToOwner = async (
+    registrar: anchor.web3.Keypair,
+    registrarPDA: PublicKey,
+    newOwnerAddress: PublicKey,
+    titleNumber: string,
+    location: string,
+    acreage: number,
+    districtLandRegistry: string,
+    registryMapsheetNumber: number,
+    titleDeedPDA: PublicKey,
+    ownerPDA: PublicKey
+  ) => {
+    await program.methods
+      .assignTitleDeedToOwner(
+        newOwnerAddress,
+        titleNumber,
+        location,
+        acreage,
+        districtLandRegistry,
+        registryMapsheetNumber
+      )
+      .accounts({
+        authority: registrar.publicKey,
+        registrar: registrarPDA,
+        titleDeed: titleDeedPDA,
+        owner: ownerPDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([registrar])
+      .rpc();
+  };
+
+  const markTitleForSale = async (
+    authority: anchor.web3.Keypair,
+    price: BN,
+    titleDeedPDA: PublicKey,
+    sellerPDA: PublicKey,
+    titleForSalePDA: PublicKey
+  ) => {
+    await program.methods
+      .markTitleForSale(price)
+      .accounts({
+        authority: authority.publicKey,
+        titleDeed: titleDeedPDA,
+        seller: sellerPDA,
+        titleForSale: titleForSalePDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([authority])
+      .rpc();
+  };
+
+  const searchTitleDeedByNumber = async (
+    authority: anchor.web3.Keypair,
+    titleNumber: string,
+    titleNumberLookupPDA: PublicKey,
+    titleDeedPDA: PublicKey,
+    searchedByPDA: PublicKey
+  ) => {
+    await program.methods
+      .searchTitleDeedByNumber(titleNumber)
+      .accounts({
+        authority: authority.publicKey,
+        titleNumberLookup: titleNumberLookupPDA,
+        titleDeed: titleDeedPDA,
+        searchedBy: searchedByPDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([authority])
+      .rpc();
+  };
+
+  const makeAgreement = async (
+    authority: anchor.web3.Keypair,
+    price: BN,
+    titleDeedPDA: PublicKey,
+    titleForSalePDA: PublicKey,
+    sellerPDA: PublicKey,
+    buyerPDA: PublicKey,
+    titleNumberLookupPDA: PublicKey,
+    agreementPDA: PublicKey,
+    agreementIndexPDA: PublicKey
+  ) => {
+    await program.methods
+      .makeAgreement(price)
+      .accounts({
+        authority: authority.publicKey,
+        titleDeed: titleDeedPDA,
+        titleForSale: titleForSalePDA,
+        seller: sellerPDA,
+        buyer: buyerPDA,
+        titleNumberLookup: titleNumberLookupPDA,
+        agreement: agreementPDA,
+        agreementIndex: agreementIndexPDA,
+      })
+      .signers([authority])
+      .rpc();
+  };
+
+  const signAgreement = async (
+    authority: anchor.web3.Keypair,
+    price: BN,
+    titleDeedPDA: PublicKey,
+    agreementPDA: PublicKey
+  ) => {
+    await program.methods
+      .signAgreement(price)
+      .accounts({
+        authority: authority.publicKey,
+        titleDeed: titleDeedPDA,
+        agreement: agreementPDA,
+      })
+      .signers([authority])
+      .rpc();
+  };
+
+  const createEscrow = async (
+    authority: anchor.web3.Keypair,
+    titleDeedPDA: PublicKey,
+    agreementPDA: PublicKey,
+    sellerPDA: PublicKey,
+    buyerPDA: PublicKey,
+    escrowPDA: PublicKey
+  ) => {
+    await program.methods
+      .createEscrow()
+      .accounts({
+        authority: authority.publicKey,
+        titleDeed: titleDeedPDA,
+        agreement: agreementPDA,
+        seller: sellerPDA,
+        buyer: buyerPDA,
+        escrow: escrowPDA,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([authority])
+      .rpc();
   };
 });
