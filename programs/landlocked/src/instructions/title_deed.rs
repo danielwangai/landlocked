@@ -2,9 +2,9 @@ use anchor_lang::prelude::*;
 use anchor_lang::AccountDeserialize;
 
 use crate::{
-    contexts::{MarkTitleForSale, SearchTitleDeedByNumber},
+    contexts::{AuthorizeEscrow, MarkTitleForSale, SearchTitleDeedByNumber},
     error::ProtocolError,
-    state::{AgreementIndex, Deposit, EscrowState, TitleNumberLookup},
+    state::{AgreementIndex, Registrar, EscrowState, TitleNumberLookup},
     AssignTitleDeedToOwner, CancelAgreement, CreateEscrow, DepositPaymentToEscrow, MakeAgreement, SignAgreement,
 };
 
@@ -363,6 +363,95 @@ pub fn create_escrow_handler(ctx: Context<CreateEscrow>) -> Result<()> {
     Ok(())
 }
 
+// registrar performs due diligence that the process for land transfer was indeed performed
+// by both parties(seller and buyer)
+pub fn authorize_escrow_handler(ctx: Context<AuthorizeEscrow>) -> Result<()> {
+    // ensure authority is a registrar
+    is_registrar(
+        &ctx.accounts.authority.key(),
+        &ctx.accounts.registrar.to_account_info()
+    )?;
+
+    // ensure agreement participants are legitimate
+    // also ensures seller is indeed the owner of the land
+    require!(
+        ctx.accounts.title_deed.owner.authority == ctx.accounts.seller.authority,
+        ProtocolError::Unauthorized
+    );
+
+    require!(
+        ctx.accounts.agreement.buyer.authority == ctx.accounts.buyer.authority,
+        ProtocolError::Unauthorized
+    );
+
+    require!(
+        // ensure seller(owner) put land up for sale
+        ctx.accounts.title_for_sale.seller.authority == ctx.accounts.seller.authority &&
+        ctx.accounts.title_for_sale.title_deed == ctx.accounts.title_deed.key(),
+        ProtocolError::TitleNotMarkedForSale
+    );
+
+    // ensure buyer performed a search on the land
+    require!(
+        ctx.accounts.title_number_lookup.searched_by == ctx.accounts.buyer.authority,
+        ProtocolError::Unauthorized
+    );
+
+    // ensure buyer signed the agreement
+    require!(
+        ctx.accounts.agreement.buyer_confirmation.is_some(),
+        ProtocolError::AgreementNotSignedByBuyer
+    );
+
+    // if all checks pass, transfer title to buyer(authority and details)
+    // transfer title deed authority from escrow to buyer
+    let title_deed = &mut ctx.accounts.title_deed;
+    title_deed.authority = ctx.accounts.buyer.authority;
+    title_deed.owner = (*ctx.accounts.buyer).clone(); // Transfer ownership to buyer
+    title_deed.is_for_sale = false;
+    
+    // Verify seller_authority matches seller.authority
+    require!(
+        ctx.accounts.seller_authority.key() == ctx.accounts.seller.authority,
+        ProtocolError::Unauthorized
+    );
+
+    // Transfer funds from deposit account (PDA) to seller's authority (wallet)
+    // Since deposit account has data, we can't use System Program transfer directly
+    // Instead, we manually transfer lamports (program can modify accounts it owns)
+    let deposit_account_info = ctx.accounts.deposit.to_account_info();
+    let seller_account_info = ctx.accounts.seller_authority.clone();
+    
+    // Get current lamports
+    let deposit_lamports = deposit_account_info.lamports();
+    let seller_lamports = seller_account_info.lamports();
+    
+    // Transfer the deposit amount (not all lamports, as some is rent exemption)
+    let transfer_amount = ctx.accounts.deposit.amount;
+    
+    // Perform the transfer
+    **deposit_account_info.try_borrow_mut_lamports()? = deposit_lamports
+        .checked_sub(transfer_amount)
+        .ok_or(ProtocolError::ArithmeticUnderflow)?;
+    **seller_account_info.try_borrow_mut_lamports()? = seller_lamports
+        .checked_add(transfer_amount)
+        .ok_or(ProtocolError::ArithmeticOverflow)?;
+    
+    // update escrow state to Completed
+    let escrow = &mut ctx.accounts.escrow;
+    escrow.state = EscrowState::Completed;
+    let clock = Clock::get()?;
+    escrow.completed_at = Some(clock.unix_timestamp);
+
+    msg!(
+        "Escrow completed and title deed authority transferred from {} to buyer {}",
+        ctx.accounts.escrow.key(),
+        ctx.accounts.buyer.authority
+    );
+
+    Ok(())
+}
+
 // helpers
 fn confirm_seller(ctx: &Context<CreateEscrow>) -> Result<()> {
     // ensure that the authority is the seller
@@ -381,6 +470,29 @@ fn confirm_buyer(ctx: &Context<CreateEscrow>) -> Result<()> {
         ProtocolError::InvalidBuyer
     );
     Ok(())
+}
+
+pub fn is_registrar(authority: &Pubkey, registrar_account: &AccountInfo) -> Result<Registrar> {
+    // Check account exists
+    require!(
+        registrar_account.lamports() > 0,
+        ProtocolError::InvalidRegistrar
+    );
+    
+    // Deserialize registrar
+    let registrar = Registrar::try_deserialize(&mut &registrar_account.data.borrow()[..])?;
+    
+    // Verify it's active and matches authority
+    require!(
+        registrar.is_active,
+        ProtocolError::InvalidRegistrar
+    );
+    require!(
+        registrar.authority == *authority,
+        ProtocolError::InvalidRegistrar
+    );
+    
+    Ok(registrar)
 }
 
 pub fn deposit_payment_to_escrow_handler(

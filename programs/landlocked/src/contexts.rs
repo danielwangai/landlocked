@@ -1,6 +1,7 @@
 use crate::{
-    Admin, Agreement, Deposit, Registrar, USER_SEED, User, error::ProtocolError, state::{
-        AgreementIndex, Escrow, IdNumberClaim, ProtocolState, TitleDeed, TitleForSale, TitleNumberLookup,
+    Admin, Agreement, Deposit, EscrowState, Registrar, USER_SEED, User, error::ProtocolError, state::{
+        AgreementIndex, Escrow, IdNumberClaim, ProtocolState, TitleDeed, TitleForSale,
+        TitleNumberLookup,
     }
 };
 use anchor_lang::prelude::*;
@@ -299,9 +300,7 @@ pub struct CreateEscrow<'info> {
     )]
     pub authority: Signer<'info>, // this is the seller(current land owner)
     // title deeed
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub title_deed: Account<'info, TitleDeed>,
     // agreement - must be signed by the buyer
     #[account(
@@ -350,5 +349,42 @@ pub struct DepositPaymentToEscrow<'info> {
         bump
     )]
     pub deposit: Account<'info, Deposit>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct AuthorizeEscrow<'info> {
+    #[account(
+        mut,
+        // must be registrar
+    )]
+    pub authority: Signer<'info>,
+    #[account(
+        seeds = [b"registrar", authority.key().as_ref()],
+        bump = registrar.bump,
+    )]
+    pub registrar: Account<'info, Registrar>,
+    #[account(
+        mut,
+        // escrow state must be PaymentDeposited (both title and payment deposited)
+        constraint = escrow.state == EscrowState::PaymentDeposited @ ProtocolError::EscrowNotReadyForPayment,
+    )]
+    pub escrow: Account<'info, Escrow>,
+    #[account(
+        mut,
+        seeds = [b"deposit", escrow.key().as_ref()],
+        bump = deposit.bump,
+    )]
+    pub deposit: Account<'info, Deposit>,
+    #[account(mut)]
+    pub title_deed: Account<'info, TitleDeed>,
+    pub title_for_sale: Account<'info, TitleForSale>,
+    pub agreement: Account<'info, Agreement>,
+    pub title_number_lookup: Account<'info, TitleNumberLookup>,
+    pub buyer: Account<'info, User>,
+    pub seller: Account<'info, User>,
+    /// CHECK: Seller's authority account (wallet) - used to receive funds
+    #[account(mut)]
+    pub seller_authority: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }

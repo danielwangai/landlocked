@@ -99,4 +99,8 @@ pub mod landlocked {
     ) -> Result<()> {
         title_deed::deposit_payment_to_escrow_handler(ctx, amount)
     }
+
+    pub fn authorize_escrow(ctx: Context<AuthorizeEscrow>) -> Result<()> {
+        title_deed::authorize_escrow_handler(ctx)
+    }
 }

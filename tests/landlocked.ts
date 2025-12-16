@@ -1569,6 +1569,264 @@ describe("landlocked", () => {
         );
       });
     });
+
+    describe("authorize escrow", () => {
+      // PDAs for authorize escrow tests
+      let titleDeedPDA: PublicKey;
+      let titleForSalePDA: PublicKey;
+      let titleNumberLookupPDA: PublicKey;
+      let agreementPDA: PublicKey;
+      let agreementIndexPDA: PublicKey;
+      let escrowPDA: PublicKey;
+      let buyerPDA: PublicKey;
+      let buyerIdNumberClaimPDA: PublicKey;
+      let sellerPDA: PublicKey;
+      let sellerIdNumberClaimPDA: PublicKey;
+      let depositPDA: PublicKey;
+
+      // Authorize escrow buyer and seller
+      const buyer = anchor.web3.Keypair.generate();
+      const seller = anchor.web3.Keypair.generate();
+
+      // Authorize escrow seller and title details
+      const sellerDetails = {
+        idNumber: "555666777888",
+        firstName: "Mike",
+        lastName: "Oloo",
+        phoneNumber: "555666777",
+      };
+      const titleDetails = {
+        titleNumber: "999888777666",
+        location: "Kisumu",
+        acreage: 180,
+        districtLandRegistry: "Kisumu",
+        registryMapsheetNumber: new BN(111222333),
+      };
+
+      before(async () => {
+        // airdrops
+        await airdrop(buyer.publicKey, 3000000000); // 3 SOL for deposit
+        await airdrop(seller.publicKey, 1000000000);
+
+        // auth buyer details
+        const buyerDetails = {
+          idNumber: "666777888999",
+          firstName: "Auth",
+          lastName: "Buyer",
+          phoneNumber: "666777888",
+        };
+        buyerPDA = getUserAddress(buyerDetails.idNumber, buyer.publicKey);
+        buyerIdNumberClaimPDA = getIdNumberClaimPDA(buyerDetails.idNumber);
+
+        // auth seller PDAs
+        sellerPDA = getUserAddress(sellerDetails.idNumber, seller.publicKey);
+        sellerIdNumberClaimPDA = getIdNumberClaimPDA(sellerDetails.idNumber);
+
+        // Create auth buyer account
+        await createUserAccount(
+          buyer,
+          buyerDetails.firstName,
+          buyerDetails.lastName,
+          buyerDetails.idNumber,
+          buyerDetails.phoneNumber,
+          buyerPDA,
+          buyerIdNumberClaimPDA
+        );
+
+        // Create auth seller account
+        await createUserAccount(
+          seller,
+          sellerDetails.firstName,
+          sellerDetails.lastName,
+          sellerDetails.idNumber,
+          sellerDetails.phoneNumber,
+          sellerPDA,
+          sellerIdNumberClaimPDA
+        );
+
+        // Set up PDAs for auth title deed
+        titleDeedPDA = getTitleDeedPDA(seller.publicKey);
+        titleForSalePDA = getTitleForSalePDA(titleDeedPDA, seller.publicKey);
+        titleNumberLookupPDA = getTitleNumberLookupPDA(
+          titleDetails.titleNumber
+        );
+
+        // Assign title deed to auth seller
+        await assignTitleDeedToOwner(
+          registrar2,
+          registrar2PDA,
+          seller.publicKey,
+          titleDetails.titleNumber,
+          titleDetails.location,
+          titleDetails.acreage,
+          titleDetails.districtLandRegistry,
+          titleDetails.registryMapsheetNumber,
+          titleDeedPDA,
+          sellerPDA
+        );
+
+        // Mark title deed for sale
+        await markTitleForSale(
+          seller,
+          new BN(2000000000), // 2 SOL
+          titleDeedPDA,
+          sellerPDA,
+          titleForSalePDA
+        );
+
+        // Buyer searches for title deed
+        await searchTitleDeedByNumber(
+          buyer,
+          titleDetails.titleNumber,
+          titleNumberLookupPDA,
+          titleDeedPDA,
+          buyerPDA
+        );
+
+        // Create agreement
+        agreementPDA = getAgreementPDA(
+          seller.publicKey,
+          buyer.publicKey,
+          titleDeedPDA,
+          new BN(2000000000) // 2 SOL
+        );
+        agreementIndexPDA = getAgreementIndexPDA(titleDeedPDA);
+        escrowPDA = getEscrowPDA(agreementPDA);
+        depositPDA = getDepositPDA(escrowPDA);
+
+        await makeAgreement(
+          seller,
+          new BN(2000000000),
+          titleDeedPDA,
+          titleForSalePDA,
+          sellerPDA,
+          buyerPDA,
+          titleNumberLookupPDA,
+          agreementPDA,
+          agreementIndexPDA
+        );
+
+        // Buyer signs the agreement
+        await signAgreement(
+          buyer,
+          new BN(2000000000),
+          titleDeedPDA,
+          agreementPDA
+        );
+
+        // Seller creates escrow
+        await createEscrow(
+          seller,
+          titleDeedPDA,
+          agreementPDA,
+          sellerPDA,
+          buyerPDA,
+          escrowPDA
+        );
+
+        // Buyer deposits payment
+        await depositPaymentToEscrow(
+          buyer,
+          new BN(2000000000),
+          buyerPDA,
+          sellerPDA,
+          escrowPDA,
+          agreementPDA,
+          depositPDA
+        );
+      });
+
+      it("allows registrar to authorize escrow transfer successfully", async () => {
+        // Get balances before authorization
+        const sellerBalanceBefore =
+          await program.provider.connection.getBalance(seller.publicKey);
+        const depositBalanceBefore =
+          await program.provider.connection.getBalance(depositPDA);
+
+        // Get title deed before authorization
+        const titleDeedBefore = await program.account.titleDeed.fetch(
+          titleDeedPDA
+        );
+
+        // Registrar authorizes the escrow
+        await program.methods
+          .authorizeEscrow()
+          .accounts({
+            authority: registrar2.publicKey,
+            registrar: registrar2PDA,
+            escrow: escrowPDA,
+            deposit: depositPDA,
+            titleDeed: titleDeedPDA,
+            titleForSale: titleForSalePDA,
+            agreement: agreementPDA,
+            titleNumberLookup: titleNumberLookupPDA,
+            buyer: buyerPDA,
+            seller: sellerPDA,
+            sellerAuthority: seller.publicKey, // Seller's wallet to receive funds
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
+          .signers([registrar2])
+          .rpc();
+
+        // Get balances after authorization
+        const sellerBalanceAfter = await program.provider.connection.getBalance(
+          seller.publicKey
+        );
+        const depositBalanceAfter =
+          await program.provider.connection.getBalance(depositPDA);
+
+        // Verify escrow state is Completed
+        const escrow = await program.account.escrow.fetch(escrowPDA);
+        // Anchor enums are objects - check if the 'completed' property exists
+        assert.ok(
+          "completed" in escrow.state,
+          `Escrow should be completed, but state is: ${JSON.stringify(
+            escrow.state
+          )}`
+        );
+        assert.ok(
+          escrow.completedAt !== null,
+          "Escrow should have completion timestamp"
+        );
+
+        // Verify title deed ownership transferred to buyer
+        const titleDeedAfter = await program.account.titleDeed.fetch(
+          titleDeedPDA
+        );
+        assert.equal(
+          titleDeedAfter.owner.authority.toString(),
+          buyer.publicKey.toString(),
+          "Title deed owner should be buyer"
+        );
+        assert.equal(
+          titleDeedAfter.authority.toString(),
+          buyer.publicKey.toString(),
+          "Title deed authority should be buyer"
+        );
+        assert.equal(
+          titleDeedAfter.isForSale,
+          false,
+          "Title deed should no longer be for sale"
+        );
+
+        // Verify seller received funds (deposit account should be closed/empty)
+        const depositAmount = new BN(2000000000);
+        const sellerBalanceIncrease = sellerBalanceAfter - sellerBalanceBefore;
+        const maxAllowedDifference = 100000; // Allow for transaction fees
+
+        assert.ok(
+          Math.abs(sellerBalanceIncrease - depositAmount.toNumber()) <=
+            maxAllowedDifference,
+          `Seller should receive approximately ${depositAmount.toString()} lamports (actual increase: ${sellerBalanceIncrease})`
+        );
+
+        // Verify deposit account balance decreased (funds transferred to seller)
+        assert.ok(
+          depositBalanceAfter < depositBalanceBefore,
+          "Deposit account balance should decrease after transfer"
+        );
+      });
+    });
   });
 
   // helpers
