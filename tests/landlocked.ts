@@ -207,6 +207,7 @@ describe("landlocked", () => {
     title2NumberLookupPDA = getTitleNumberLookupPDA(owner2Details.titleNumber);
 
     // assign title deed to owner2
+    const owner2OwnershipHistoryPDA = getOwnershipHistoryPDA(titleDeed2PDA, 0);
     await program.methods
       .assignTitleDeedToOwner(
         owner2.publicKey,
@@ -221,6 +222,7 @@ describe("landlocked", () => {
         registrar: registrar2PDA,
         titleDeed: titleDeed2PDA,
         owner: owner2PDA,
+        ownershipHistory: owner2OwnershipHistoryPDA,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([registrar2])
@@ -633,6 +635,43 @@ describe("landlocked", () => {
         owner1.publicKey.toString()
       );
       assert.equal(titleDeed.isForSale, false);
+      assert.equal(
+        titleDeed.totalTransfers.toNumber(),
+        0,
+        "Initial assignment should have 0 transfers"
+      );
+    });
+
+    it("records ownership history for initial title deed assignment", async () => {
+      const ownershipHistoryPDA = getOwnershipHistoryPDA(titleDeedPDA, 0);
+      const ownershipHistory = await program.account.ownershipHistory.fetch(
+        ownershipHistoryPDA
+      );
+
+      assert.equal(
+        ownershipHistory.titleDeed.toString(),
+        titleDeedPDA.toString(),
+        "Ownership history should reference correct title deed"
+      );
+      assert.equal(
+        ownershipHistory.previousOwner.toString(),
+        PublicKey.default.toString(),
+        "Previous owner should be default (no previous owner for initial assignment)"
+      );
+      assert.equal(
+        ownershipHistory.currentOwner.toString(),
+        owner1.publicKey.toString(),
+        "Current owner should be owner1"
+      );
+      assert.equal(
+        ownershipHistory.sequenceNumber.toNumber(),
+        0,
+        "Sequence number should be 0 for initial assignment"
+      );
+      assert.ok(
+        "initialAssignment" in ownershipHistory.transferType,
+        "Transfer type should be InitialAssignment"
+      );
     });
 
     it("can allow owner to mark title deed for sale", async () => {
@@ -1747,6 +1786,12 @@ describe("landlocked", () => {
         const titleDeedBefore = await program.account.titleDeed.fetch(
           titleDeedPDA
         );
+        const sequenceNumber = titleDeedBefore.totalTransfers.toNumber();
+        // Handler increments total_transfers first, so PDA uses incremented value
+        const ownershipHistoryPDA = getOwnershipHistoryPDA(
+          titleDeedPDA,
+          sequenceNumber + 1
+        );
 
         // Registrar authorizes the escrow
         await program.methods
@@ -1757,6 +1802,7 @@ describe("landlocked", () => {
             escrow: escrowPDA,
             deposit: depositPDA,
             titleDeed: titleDeedPDA,
+            ownershipHistory: ownershipHistoryPDA,
             titleForSale: titleForSalePDA,
             agreement: agreementPDA,
             titleNumberLookup: titleNumberLookupPDA,
@@ -1807,6 +1853,42 @@ describe("landlocked", () => {
           titleDeedAfter.isForSale,
           false,
           "Title deed should no longer be for sale"
+        );
+
+        // Verify total_transfers was incremented
+        assert.equal(
+          titleDeedAfter.totalTransfers.toNumber(),
+          sequenceNumber + 1,
+          "Total transfers should be incremented"
+        );
+
+        // Verify ownership history was recorded
+        const ownershipHistory = await program.account.ownershipHistory.fetch(
+          ownershipHistoryPDA
+        );
+        assert.equal(
+          ownershipHistory.titleDeed.toString(),
+          titleDeedPDA.toString(),
+          "Ownership history should reference correct title deed"
+        );
+        assert.equal(
+          ownershipHistory.previousOwner.toString(),
+          seller.publicKey.toString(),
+          "Previous owner should be seller"
+        );
+        assert.equal(
+          ownershipHistory.currentOwner.toString(),
+          buyer.publicKey.toString(),
+          "Current owner should be buyer"
+        );
+        assert.equal(
+          ownershipHistory.sequenceNumber.toNumber(),
+          sequenceNumber + 1,
+          "Sequence number should match incremented total_transfers"
+        );
+        assert.ok(
+          "escrowCompletion" in ownershipHistory.transferType,
+          "Transfer type should be EscrowCompletion"
         );
 
         // Verify seller received funds (deposit account should be closed/empty)
@@ -1938,6 +2020,18 @@ describe("landlocked", () => {
     )[0];
   };
 
+  const getOwnershipHistoryPDA = (
+    titleDeed: PublicKey,
+    sequenceNumber: number
+  ) => {
+    const sequenceBuffer = Buffer.allocUnsafe(8);
+    sequenceBuffer.writeBigUInt64LE(BigInt(sequenceNumber), 0);
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("ownership_history"), titleDeed.toBuffer(), sequenceBuffer],
+      program.programId
+    )[0];
+  };
+
   // Instruction helper functions
   const createUserAccount = async (
     authority: anchor.web3.Keypair,
@@ -1968,10 +2062,11 @@ describe("landlocked", () => {
     location: string,
     acreage: number,
     districtLandRegistry: string,
-    registryMapsheetNumber: number,
+    registryMapsheetNumber: BN,
     titleDeedPDA: PublicKey,
     ownerPDA: PublicKey
   ) => {
+    const ownershipHistoryPDA = getOwnershipHistoryPDA(titleDeedPDA, 0);
     await program.methods
       .assignTitleDeedToOwner(
         newOwnerAddress,
@@ -1986,6 +2081,7 @@ describe("landlocked", () => {
         registrar: registrarPDA,
         titleDeed: titleDeedPDA,
         owner: ownerPDA,
+        ownershipHistory: ownershipHistoryPDA,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([registrar])

@@ -2,10 +2,10 @@ use anchor_lang::prelude::*;
 use anchor_lang::AccountDeserialize;
 
 use crate::{
-    contexts::{AuthorizeEscrow, MarkTitleForSale, SearchTitleDeedByNumber},
+    contexts::{AuthorizeEscrow, AssignTitleDeedToOwner, MarkTitleForSale, SearchTitleDeedByNumber},
     error::ProtocolError,
-    state::{AgreementIndex, Registrar, EscrowState, TitleNumberLookup},
-    AssignTitleDeedToOwner, CancelAgreement, CreateEscrow, DepositPaymentToEscrow, MakeAgreement, SignAgreement,
+    state::{AgreementIndex, Registrar, EscrowState, OwnershipHistory, TitleNumberLookup, TransferType},
+    CancelAgreement, CreateEscrow, DepositPaymentToEscrow, MakeAgreement, SignAgreement,
 };
 
 pub fn mark_title_for_sale_handler(ctx: Context<MarkTitleForSale>, price: u64) -> Result<()> {
@@ -55,7 +55,18 @@ pub fn assign_title_deed_to_owner_handler(
     title_deed.registry_mapsheet_number = registry_mapsheet_number;
     title_deed.registration_date = clock.unix_timestamp;
     title_deed.is_for_sale = false;
+    title_deed.total_transfers = 0; // Initial assignment, no transfers yet
     title_deed.bump = ctx.bumps.title_deed;
+
+    // Record initial ownership assignment
+    let ownership_history = &mut ctx.accounts.ownership_history;
+    ownership_history.title_deed = title_deed.key();
+    ownership_history.previous_owner = Pubkey::default(); // No previous owner for initial assignment
+    ownership_history.current_owner = new_owner_address;
+    ownership_history.transferred_at = clock.unix_timestamp;
+    ownership_history.transfer_type = TransferType::InitialAssignment;
+    ownership_history.sequence_number = 0;
+    ownership_history.bump = ctx.bumps.ownership_history;
 
     msg!(
         "Title deed {} assigned to new owner {}",
@@ -406,9 +417,86 @@ pub fn authorize_escrow_handler(ctx: Context<AuthorizeEscrow>) -> Result<()> {
     // if all checks pass, transfer title to buyer(authority and details)
     // transfer title deed authority from escrow to buyer
     let title_deed = &mut ctx.accounts.title_deed;
+    let previous_owner = title_deed.owner.authority; // Store previous owner before transfer
+    
+    // Increment transfer counter first (this is the sequence number for the new history entry)
+    title_deed.total_transfers = title_deed.total_transfers
+        .checked_add(1)
+        .ok_or(ProtocolError::ArithmeticOverflow)?;
+    
+    let sequence_number = title_deed.total_transfers; // Sequence number for new history entry
+    
     title_deed.authority = ctx.accounts.buyer.authority;
     title_deed.owner = (*ctx.accounts.buyer).clone(); // Transfer ownership to buyer
     title_deed.is_for_sale = false;
+    
+    // Derive ownership history PDA using incremented total_transfers
+    let title_deed_key = title_deed.key();
+    let seeds = &[
+        b"ownership_history",
+        title_deed_key.as_ref(),
+        &sequence_number.to_le_bytes(),
+    ];
+    let (ownership_history_pda, ownership_history_bump) = Pubkey::find_program_address(
+        seeds,
+        ctx.program_id,
+    );
+    
+    // Verify the provided account matches the derived PDA
+    require!(
+        ctx.accounts.ownership_history.key() == ownership_history_pda,
+        ProtocolError::TitleAuthorityMismatch
+    );
+    
+    // Create ownership history account via CPI
+    let rent = anchor_lang::solana_program::rent::Rent::get()?;
+    let space = 8 + OwnershipHistory::INIT_SPACE;
+    let lamports_required = rent.minimum_balance(space);
+    
+    anchor_lang::solana_program::program::invoke_signed(
+        &anchor_lang::solana_program::system_instruction::create_account(
+            ctx.accounts.authority.key,
+            &ownership_history_pda,
+            lamports_required,
+            space as u64,
+            ctx.program_id,
+        ),
+        &[
+            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.ownership_history.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+        ],
+        &[&[
+            b"ownership_history",
+            title_deed_key.as_ref(),
+            &sequence_number.to_le_bytes(),
+            &[ownership_history_bump],
+        ]],
+    )?;
+    
+    // Initialize ownership history account
+    let clock = Clock::get()?;
+    let mut ownership_history_data = ctx.accounts.ownership_history.try_borrow_mut_data()?;
+    let mut ownership_history = OwnershipHistory::try_deserialize(&mut &ownership_history_data[..])
+        .unwrap_or(OwnershipHistory {
+            title_deed: title_deed_key,
+            previous_owner,
+            current_owner: ctx.accounts.buyer.authority,
+            transferred_at: clock.unix_timestamp,
+            transfer_type: TransferType::EscrowCompletion,
+            sequence_number,
+            bump: ownership_history_bump,
+        });
+    
+    ownership_history.title_deed = title_deed_key;
+    ownership_history.previous_owner = previous_owner;
+    ownership_history.current_owner = ctx.accounts.buyer.authority;
+    ownership_history.transferred_at = clock.unix_timestamp;
+    ownership_history.transfer_type = TransferType::EscrowCompletion;
+    ownership_history.sequence_number = sequence_number;
+    ownership_history.bump = ownership_history_bump;
+    
+    ownership_history.try_serialize(&mut &mut ownership_history_data[..])?;
     
     // Verify seller_authority matches seller.authority
     require!(
@@ -440,13 +528,13 @@ pub fn authorize_escrow_handler(ctx: Context<AuthorizeEscrow>) -> Result<()> {
     // update escrow state to Completed
     let escrow = &mut ctx.accounts.escrow;
     escrow.state = EscrowState::Completed;
-    let clock = Clock::get()?;
     escrow.completed_at = Some(clock.unix_timestamp);
 
     msg!(
-        "Escrow completed and title deed authority transferred from {} to buyer {}",
+        "Escrow completed and title deed authority transferred from {} to buyer {}. Ownership history recorded (sequence: {})",
         ctx.accounts.escrow.key(),
-        ctx.accounts.buyer.authority
+        ctx.accounts.buyer.authority,
+        sequence_number
     );
 
     Ok(())

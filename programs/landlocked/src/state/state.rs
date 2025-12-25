@@ -80,6 +80,7 @@ pub struct TitleDeed {
     pub registration_date: i64,
     pub registry_mapsheet_number: u64,
     pub is_for_sale: bool, // TODO: remove this field
+    pub total_transfers: u64, // total number of ownership transfers for this title deed
     pub bump: u8,
 }
 
@@ -165,5 +166,27 @@ pub struct Deposit {
     pub amount: u64,
     pub deposited_at: i64,
     pub deposited_by: Pubkey, // buyer in the escrow/agreement
+    pub bump: u8,
+}
+
+/// Transfer type enum for ownership history
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, InitSpace)]
+pub enum TransferType {
+    InitialAssignment, // Initial assignment by registrar
+    EscrowCompletion, // Transfer via escrow completion
+    Gift, // TODO
+    Inheritance, // TODO
+}
+
+/// Ownership history account tracking each transfer of a title deed
+#[account]
+#[derive(InitSpace)]
+pub struct OwnershipHistory {
+    pub title_deed: Pubkey,
+    pub previous_owner: Pubkey, 
+    pub current_owner: Pubkey,
+    pub transferred_at: i64,
+    pub transfer_type: TransferType,
+    pub sequence_number: u64, // Order of this transfer (0-indexed)
     pub bump: u8,
 }

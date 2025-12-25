@@ -1,6 +1,6 @@
 use crate::{
     Admin, Agreement, Deposit, EscrowState, Registrar, USER_SEED, User, error::ProtocolError, state::{
-        AgreementIndex, Escrow, IdNumberClaim, ProtocolState, TitleDeed, TitleForSale,
+        AgreementIndex, Escrow, IdNumberClaim, OwnershipHistory, ProtocolState, TitleDeed, TitleForSale,
         TitleNumberLookup,
     }
 };
@@ -129,6 +129,14 @@ pub struct AssignTitleDeedToOwner<'info> {
     )]
     pub title_deed: Account<'info, TitleDeed>,
     pub owner: Account<'info, User>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + OwnershipHistory::INIT_SPACE,
+        seeds = [b"ownership_history", title_deed.key().as_ref(), 0u64.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub ownership_history: Account<'info, OwnershipHistory>,
     pub system_program: Program<'info, System>,
 }
 
@@ -378,6 +386,10 @@ pub struct AuthorizeEscrow<'info> {
     pub deposit: Account<'info, Deposit>,
     #[account(mut)]
     pub title_deed: Account<'info, TitleDeed>,
+    /// CHECK: Ownership history PDA - manually derived and created in handler
+    /// PDA seeds: [b"ownership_history", title_deed.key(), (total_transfers + 1).to_le_bytes()]
+    #[account(mut)]
+    pub ownership_history: UncheckedAccount<'info>,
     pub title_for_sale: Account<'info, TitleForSale>,
     pub agreement: Account<'info, Agreement>,
     pub title_number_lookup: Account<'info, TitleNumberLookup>,
