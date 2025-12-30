@@ -70,3 +70,7 @@ make test
 - **Escrow Protection**: Title deeds and payments held securely until completion
 - **Registrar Validation**: Transfers require registrar authorization
 - **Immutable History**: Ownership records cannot be altered or deleted
+
+## Deployment
+
+Solana Devnet - `2QTzANQymYT8yUfqprkB2aB8FGbS362S4BWZn23JKpbv99FJ87EgYw6yUbDEfjGMRdxXTvbjki7wzmRuRbJCwEE2`

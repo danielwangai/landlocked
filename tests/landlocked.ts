@@ -102,11 +102,15 @@ describe("landlocked", () => {
   let owner2IdNumberClaimPDA: PublicKey;
 
   before(async () => {
-    // airdrop SOL to the admins
+    // airdrop SOL to the admins with delays to avoid rate limiting
     await airdrop(admin1.publicKey, 1_000_000_000);
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
     await airdrop(admin2.publicKey, 1_000_000_000);
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await airdrop(fakeAdmin.publicKey, 1_000_000_000);
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await airdrop(registrar1.publicKey, 1_000_000_000);
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await airdrop(registrar2.publicKey, 1_000_000_000);
 
     // initialize the protocol
@@ -1912,12 +1916,92 @@ describe("landlocked", () => {
   });
 
   // helpers
-  const airdrop = async (publicKey: anchor.web3.PublicKey, amount: number) => {
-    const sig = await program.provider.connection.requestAirdrop(
-      publicKey,
-      amount
+  const airdrop = async (
+    publicKey: anchor.web3.PublicKey,
+    amount: number,
+    maxRetries: number = 5
+  ) => {
+    // Check current balance first
+    const balance = await program.provider.connection.getBalance(publicKey);
+    if (balance >= amount) {
+      return; // Already has enough balance
+    }
+
+    // Check if we should use transfers instead of airdrops (for devnet to avoid rate limiting)
+    const useTransfers =
+      process.env.USE_TRANSFERS === "true" ||
+      process.env.ANCHOR_PROVIDER_URL?.includes("devnet");
+
+    if (useTransfers && program.provider.wallet) {
+      try {
+        // Use transfer from provider wallet instead of airdrop (avoids rate limiting)
+        const transferInstruction = anchor.web3.SystemProgram.transfer({
+          fromPubkey: program.provider.wallet.publicKey,
+          toPubkey: publicKey,
+          lamports: amount,
+        });
+
+        const transaction = new anchor.web3.Transaction().add(
+          transferInstruction
+        );
+
+        // Use Anchor's sendAndConfirm which handles the wallet properly
+        await program.provider.sendAndConfirm(transaction);
+        return; // Success
+      } catch (error: any) {
+        // If transfer fails (e.g., insufficient funds), fall back to airdrop
+        console.log(
+          `Transfer failed for ${publicKey.toString()}, falling back to airdrop: ${
+            error.message
+          }`
+        );
+      }
+    }
+
+    // Fall back option: airdrop tokens (or use if USE_TRANSFERS is not set)
+    // retry 5 times
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Add a small delay between retries (exponential backoff)
+        if (attempt > 0) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        const sig = await program.provider.connection.requestAirdrop(
+          publicKey,
+          amount
+        );
+        await program.provider.connection.confirmTransaction(sig, "confirmed");
+        return; // Success
+      } catch (error: any) {
+        lastError = error;
+        // If it's a rate limit or internal error, retry
+        if (
+          error.message?.includes("Internal error") ||
+          error.message?.includes("429") ||
+          error.message?.includes("rate limit") ||
+          error.message?.includes("Too Many Requests")
+        ) {
+          console.log(
+            `Airdrop attempt ${
+              attempt + 1
+            }/${maxRetries} failed for ${publicKey.toString()}, retrying...`
+          );
+          continue;
+        }
+        // For other errors, throw immediately
+        throw error;
+      }
+    }
+
+    // If all retries failed, throw the last error
+    throw new Error(
+      `Failed to airdrop ${amount} lamports to ${publicKey.toString()} after ${maxRetries} attempts: ${
+        lastError?.message
+      }`
     );
-    await program.provider.connection.confirmTransaction(sig, "confirmed");
   };
 
   // get PDA for the protocol
