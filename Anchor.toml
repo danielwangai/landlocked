@@ -5,17 +5,17 @@ package_manager = "yarn"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-landlocked = "4AYNJr9c5E2MgtKd2RGsSdSRfEcLfNWm2og83MeFchYv"
-
 [programs.devnet]
-landlocked = "4AYNJr9c5E2MgtKd2RGsSdSRfEcLfNWm2og83MeFchYv"
+landlocked = "39fc7eg4u6F3S4Y3MaWn6HSSFNrHMYNgGwy6tW5Dh3QQ"
+
+[programs.localnet]
+landlocked = "39fc7eg4u6F3S4Y3MaWn6HSSFNrHMYNgGwy6tW5Dh3QQ"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

@@ -11,7 +11,7 @@ pub use contexts::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("4AYNJr9c5E2MgtKd2RGsSdSRfEcLfNWm2og83MeFchYv");
+declare_id!("39fc7eg4u6F3S4Y3MaWn6HSSFNrHMYNgGwy6tW5Dh3QQ");
 
 #[program]
 pub mod landlocked {

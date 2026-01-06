@@ -73,4 +73,8 @@ make test
 
 ## Deployment
 
-Solana Devnet - `2QTzANQymYT8yUfqprkB2aB8FGbS362S4BWZn23JKpbv99FJ87EgYw6yUbDEfjGMRdxXTvbjki7wzmRuRbJCwEE2`
+Solana Devnet - `23ndyTYSytMZo6VhR3ddXeGd3xWeNw13DV23PjyWvKgKy8Q5ZbP9cLJZJxqd4T3MLjeWY823bdGQhsqqh9vpXm5v`
+
+## Tests
+
+![Tests pass on devnet](images/tests.png)

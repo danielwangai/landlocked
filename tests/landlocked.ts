@@ -104,13 +104,9 @@ describe("landlocked", () => {
   before(async () => {
     // airdrop SOL to the admins with delays to avoid rate limiting
     await airdrop(admin1.publicKey, 100_000_000);
-    // await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
     await airdrop(admin2.publicKey, 100_000_000);
-    // await new Promise((resolve) => setTimeout(resolve, 500));
     await airdrop(fakeAdmin.publicKey, 100_000_000);
-    // await new Promise((resolve) => setTimeout(resolve, 500));
     await airdrop(registrar1.publicKey, 100_000_000);
-    // await new Promise((resolve) => setTimeout(resolve, 500));
     await airdrop(registrar2.publicKey, 100_000_000);
 
     // initialize the protocol
@@ -1916,83 +1912,12 @@ describe("landlocked", () => {
   });
 
   // helpers
-  const airdrop = async (
-    publicKey: anchor.web3.PublicKey,
-    amount: number,
-  ) => {
-    // Check current balance first
-    const balance = await program.provider.connection.getBalance(publicKey);
-    if (balance >= amount) {
-      return; // Already has enough balance
-    }
-
-    // Determine network: use transfers on devnet (skip airdrop requests)
-    const isLocalnet =
-      process.env.ANCHOR_PROVIDER_URL?.includes("localhost") ||
-      process.env.ANCHOR_PROVIDER_URL?.includes("127.0.0.1") ||
-      (!process.env.ANCHOR_PROVIDER_URL && program.provider.connection.rpcEndpoint.includes("localhost")) ||
-      (!process.env.ANCHOR_PROVIDER_URL && program.provider.connection.rpcEndpoint.includes("127.0.0.1"));
-
-    const isDevnet = 
-      process.env.ANCHOR_PROVIDER_URL?.includes("devnet") ||
-      (!process.env.ANCHOR_PROVIDER_URL && program.provider.connection.rpcEndpoint.includes("devnet"));
-
-    // On devnet: use transfers from wallet - accounts are manually funded
-    // On localnet: use transfers
-    const useTransfers = process.env.USE_TRANSFERS === "true" || isLocalnet || isDevnet;
-
-    // Use transfers from provider wallet (works on both localnet and devnet)
-    if (useTransfers && program.provider.wallet) {
-      try {
-        // Use transfer from provider wallet instead of requesting airdrops
-        const transferInstruction = anchor.web3.SystemProgram.transfer({
-          fromPubkey: program.provider.wallet.publicKey,
-          toPubkey: publicKey,
-          lamports: amount,
-        });
-
-        const transaction = new anchor.web3.Transaction().add(
-          transferInstruction
-        );
-
-        await program.provider.sendAndConfirm(transaction);
-        return; // Success
-      } catch (error: any) {
-        // On devnet: don't fall back to airdrops, just throw error
-        if (isDevnet) {
-          throw new Error(
-            `Insufficient balance for ${publicKey.toString()}. Required: ${amount} lamports, but only has ${balance} lamports. Please fund manually or ensure wallet has sufficient balance.`
-          );
-        }
-        // On localnet: fall back to airdrop if transfer fails
-        console.log(
-          `Transfer failed for ${publicKey.toString()}, falling back to airdrop: ${
-            error.message
-          }`
-        );
-      }
-    }
-
-    // On localnet only: use airdrops
-    if (isLocalnet) {
-      try {
-        const sig = await program.provider.connection.requestAirdrop(
-          publicKey,
-          amount
-        );
-        await program.provider.connection.confirmTransaction(sig, "confirmed");
-        return; // Success
-      } catch (error: any) {
-        throw new Error(
-          `Failed to airdrop ${amount} lamports to ${publicKey.toString()} on localnet: ${error.message}`
-        );
-      }
-    }
-
-    // Should not reach here - devnet uses transfers, localnet uses airdrops
-    throw new Error(
-      `Unable to fund ${publicKey.toString()}. Balance: ${balance} lamports, Required: ${amount} lamports`
+  const airdrop = async (publicKey: anchor.web3.PublicKey, amount: number) => {
+    const sig = await program.provider.connection.requestAirdrop(
+      publicKey,
+      amount
     );
+    await program.provider.connection.confirmTransaction(sig, "confirmed");
   };
 
   // get PDA for the protocol
