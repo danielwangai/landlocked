@@ -103,15 +103,15 @@ describe("landlocked", () => {
 
   before(async () => {
     // airdrop SOL to the admins with delays to avoid rate limiting
-    await airdrop(admin1.publicKey, 1_000_000_000);
-    await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
-    await airdrop(admin2.publicKey, 1_000_000_000);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    await airdrop(fakeAdmin.publicKey, 1_000_000_000);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    await airdrop(registrar1.publicKey, 1_000_000_000);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    await airdrop(registrar2.publicKey, 1_000_000_000);
+    await airdrop(admin1.publicKey, 100_000_000);
+    // await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
+    await airdrop(admin2.publicKey, 100_000_000);
+    // await new Promise((resolve) => setTimeout(resolve, 500));
+    await airdrop(fakeAdmin.publicKey, 100_000_000);
+    // await new Promise((resolve) => setTimeout(resolve, 500));
+    await airdrop(registrar1.publicKey, 100_000_000);
+    // await new Promise((resolve) => setTimeout(resolve, 500));
+    await airdrop(registrar2.publicKey, 100_000_000);
 
     // initialize the protocol
     await program.methods
@@ -144,7 +144,7 @@ describe("landlocked", () => {
     registrar1PDA = getRegistrarPDA(registrar1.publicKey);
     registrar2PDA = getRegistrarPDA(registrar2.publicKey);
 
-    await airdrop(owner1.publicKey, 1_000_000_000);
+    await airdrop(owner1.publicKey, 100_000_000);
     await program.methods
       .createUserAccount(
         owner1Details.firstName,
@@ -161,7 +161,7 @@ describe("landlocked", () => {
       .signers([owner1])
       .rpc();
 
-    await airdrop(owner2.publicKey, 1_000_000_000);
+    await airdrop(owner2.publicKey, 100_000_000);
     await program.methods
       .createUserAccount(
         owner2Details.firstName,
@@ -409,7 +409,7 @@ describe("landlocked", () => {
         program.programId
       );
 
-      await airdrop(registrar2.publicKey, 1_000_000_000);
+      await airdrop(registrar2.publicKey, 100_000_000);
 
       await program.methods
         .addRegistrar(registrar2.publicKey, "Jane", "Smith", "0987654321")
@@ -488,7 +488,7 @@ describe("landlocked", () => {
 
     it("rejects duplicate id_number", async () => {
       const user2 = anchor.web3.Keypair.generate();
-      await airdrop(user2.publicKey, 1_000_000_000);
+      await airdrop(user2.publicKey, 100_000_000);
 
       const user2PDA = getUserAddress(owner1Details.idNumber, user2.publicKey); // Same id_number as user1
       const idNumberClaimPDA2 = getIdNumberClaimPDA(owner1Details.idNumber);
@@ -538,7 +538,7 @@ describe("landlocked", () => {
     let agreement2EscrowPDA: PublicKey;
     before(async () => {
       // airdrops
-      await airdrop(buyer1.publicKey, 1000000000);
+      await airdrop(buyer1.publicKey, 100_000_000);
 
       // buyer1 details
       const buyer1Details = {
@@ -920,8 +920,8 @@ describe("landlocked", () => {
 
     before(async () => {
       // airdrops
-      await airdrop(escrowBuyer.publicKey, 1000000000);
-      await airdrop(escrowSeller.publicKey, 1000000000);
+      await airdrop(escrowBuyer.publicKey, 100_000_000);
+      await airdrop(escrowSeller.publicKey, 100_000_000);
 
       // escrow buyer details
       const escrowBuyerDetails = {
@@ -992,7 +992,7 @@ describe("landlocked", () => {
       // Mark title deed for sale
       await markTitleForSale(
         escrowSeller,
-        new BN(1000000000),
+        new BN(100_000_000),
         titleDeedPDA,
         sellerPDA,
         titleForSalePDA
@@ -1012,14 +1012,14 @@ describe("landlocked", () => {
         escrowSeller.publicKey,
         escrowBuyer.publicKey,
         titleDeedPDA,
-        new BN(1000000000)
+        new BN(100_000_000)
       );
       agreementIndexPDA = getAgreementIndexPDA(titleDeedPDA);
       escrowPDA = getEscrowPDA(agreementPDA);
 
       await makeAgreement(
         escrowSeller,
-        new BN(1000000000),
+        new BN(100_000_000),
         titleDeedPDA,
         titleForSalePDA,
         sellerPDA,
@@ -1032,7 +1032,7 @@ describe("landlocked", () => {
       // Buyer signs the agreement
       await signAgreement(
         escrowBuyer,
-        new BN(1000000000),
+        new BN(100_000_000),
         titleDeedPDA,
         agreementPDA
       );
@@ -1099,7 +1099,7 @@ describe("landlocked", () => {
         testSellerDetails.idNumber
       );
 
-      await airdrop(testSeller.publicKey, 1000000000);
+      await airdrop(testSeller.publicKey, 100_000_000);
       await createUserAccount(
         testSeller,
         testSellerDetails.firstName,
@@ -1136,7 +1136,7 @@ describe("landlocked", () => {
       // Mark for sale
       await markTitleForSale(
         testSeller,
-        new BN(3000000000),
+        new BN(300_000_000),
         testTitleDeedPDA,
         testSellerPDA,
         testTitleForSalePDA
@@ -1156,14 +1156,14 @@ describe("landlocked", () => {
         testSeller.publicKey,
         escrowBuyer.publicKey,
         testTitleDeedPDA,
-        new BN(3000000000)
+        new BN(300_000_000)
       );
       const testAgreementIndexPDA = getAgreementIndexPDA(testTitleDeedPDA);
       const testEscrowPDA = getEscrowPDA(testAgreementPDA);
 
       await makeAgreement(
         testSeller,
-        new BN(3000000000),
+        new BN(300_000_000),
         testTitleDeedPDA,
         testTitleForSalePDA,
         testSellerPDA,
@@ -1176,7 +1176,7 @@ describe("landlocked", () => {
       // Buyer signs agreement (using escrowBuyer from before hook)
       await signAgreement(
         escrowBuyer,
-        new BN(3000000000),
+        new BN(300_000_000),
         testTitleDeedPDA,
         testAgreementPDA
       );
@@ -1290,9 +1290,9 @@ describe("landlocked", () => {
 
       before(async () => {
         // airdrops
-        // Buyer needs enough for: deposit (2 SOL) + rent for deposit account + transaction fees
-        await airdrop(depositBuyer.publicKey, 3000000000); // 3 SOL
-        await airdrop(depositSeller.publicKey, 1000000000);
+        // Buyer needs enough for: deposit (0.2 SOL) + rent for deposit account + transaction fees
+        await airdrop(depositBuyer.publicKey, 300_000_000); // 0.3 SOL
+        await airdrop(depositSeller.publicKey, 100_000_000);
 
         // deposit buyer details
         const depositBuyerDetails = {
@@ -1367,7 +1367,7 @@ describe("landlocked", () => {
         // Mark title deed for sale
         await markTitleForSale(
           depositSeller,
-          new BN(2000000000), // 2 SOL
+          new BN(200_000_000), // 0.2 SOL
           depositTitleDeedPDA,
           depositSellerPDA,
           depositTitleForSalePDA
@@ -1387,14 +1387,14 @@ describe("landlocked", () => {
           depositSeller.publicKey,
           depositBuyer.publicKey,
           depositTitleDeedPDA,
-          new BN(2000000000) // 2 SOL
+          new BN(200_000_000) // 0.2 SOL
         );
         depositAgreementIndexPDA = getAgreementIndexPDA(depositTitleDeedPDA);
         depositEscrowPDA = getEscrowPDA(depositAgreementPDA);
 
         await makeAgreement(
           depositSeller,
-          new BN(2000000000),
+          new BN(200_000_000),
           depositTitleDeedPDA,
           depositTitleForSalePDA,
           depositSellerPDA,
@@ -1407,7 +1407,7 @@ describe("landlocked", () => {
         // Buyer signs the agreement
         await signAgreement(
           depositBuyer,
-          new BN(2000000000),
+          new BN(200_000_000),
           depositTitleDeedPDA,
           depositAgreementPDA
         );
@@ -1427,7 +1427,7 @@ describe("landlocked", () => {
       });
 
       it("only allows buyer to deposit the agreed price amount", async () => {
-        // Agreement price is 2000000000 lamports (2 SOL)
+        // Agreement price is 200_000_000 lamports (0.2 SOL)
         // Attempt to deposit more than the agreed price (should fail)
         try {
           await program.methods
@@ -1463,7 +1463,7 @@ describe("landlocked", () => {
       it("does not allow non-buyer to deposit payment", async () => {
         // Create a new user who is not the buyer
         const unauthorizedUser = anchor.web3.Keypair.generate();
-        await airdrop(unauthorizedUser.publicKey, 1000000000);
+        await airdrop(unauthorizedUser.publicKey, 100_000_000);
 
         const unauthorizedUserDetails = {
           idNumber: "444555666777",
@@ -1493,7 +1493,7 @@ describe("landlocked", () => {
         // Attempt to deposit payment using unauthorized user (should fail)
         try {
           await program.methods
-            .depositPaymentToEscrow(new BN(2000000000))
+            .depositPaymentToEscrow(new BN(200_000_000))
             .accounts({
               authority: unauthorizedUser.publicKey,
               buyer: unauthorizedUserPDA, // Using unauthorized user's PDA
@@ -1530,7 +1530,7 @@ describe("landlocked", () => {
         const depositBalanceBefore =
           await program.provider.connection.getBalance(depositPDA);
 
-        const depositAmount = new BN(2000000000); // 2 SOL
+        const depositAmount = new BN(200_000_000); // 0.2 SOL
 
         await depositPaymentToEscrow(
           depositBuyer,
@@ -1648,8 +1648,8 @@ describe("landlocked", () => {
 
       before(async () => {
         // airdrops
-        await airdrop(buyer.publicKey, 3000000000); // 3 SOL for deposit
-        await airdrop(seller.publicKey, 1000000000);
+        await airdrop(buyer.publicKey, 300_000_000); // 0.3 SOL for deposit
+        await airdrop(seller.publicKey, 100_000_000);
 
         // auth buyer details
         const buyerDetails = {
@@ -1711,7 +1711,7 @@ describe("landlocked", () => {
         // Mark title deed for sale
         await markTitleForSale(
           seller,
-          new BN(2000000000), // 2 SOL
+          new BN(200_000_000), // 0.2 SOL
           titleDeedPDA,
           sellerPDA,
           titleForSalePDA
@@ -1731,7 +1731,7 @@ describe("landlocked", () => {
           seller.publicKey,
           buyer.publicKey,
           titleDeedPDA,
-          new BN(2000000000) // 2 SOL
+          new BN(200_000_000) // 0.2 SOL
         );
         agreementIndexPDA = getAgreementIndexPDA(titleDeedPDA);
         escrowPDA = getEscrowPDA(agreementPDA);
@@ -1739,7 +1739,7 @@ describe("landlocked", () => {
 
         await makeAgreement(
           seller,
-          new BN(2000000000),
+          new BN(200_000_000),
           titleDeedPDA,
           titleForSalePDA,
           sellerPDA,
@@ -1752,7 +1752,7 @@ describe("landlocked", () => {
         // Buyer signs the agreement
         await signAgreement(
           buyer,
-          new BN(2000000000),
+          new BN(200_000_000),
           titleDeedPDA,
           agreementPDA
         );
@@ -1770,7 +1770,7 @@ describe("landlocked", () => {
         // Buyer deposits payment
         await depositPaymentToEscrow(
           buyer,
-          new BN(2000000000),
+          new BN(200_000_000),
           buyerPDA,
           sellerPDA,
           escrowPDA,
@@ -1896,7 +1896,7 @@ describe("landlocked", () => {
         );
 
         // Verify seller received funds (deposit account should be closed/empty)
-        const depositAmount = new BN(2000000000);
+        const depositAmount = new BN(200_000_000);
         const sellerBalanceIncrease = sellerBalanceAfter - sellerBalanceBefore;
         const maxAllowedDifference = 100000; // Allow for transaction fees
 
@@ -1919,7 +1919,6 @@ describe("landlocked", () => {
   const airdrop = async (
     publicKey: anchor.web3.PublicKey,
     amount: number,
-    maxRetries: number = 5
   ) => {
     // Check current balance first
     const balance = await program.provider.connection.getBalance(publicKey);
@@ -1927,14 +1926,25 @@ describe("landlocked", () => {
       return; // Already has enough balance
     }
 
-    // Check if we should use transfers instead of airdrops (for devnet to avoid rate limiting)
-    const useTransfers =
-      process.env.USE_TRANSFERS === "true" ||
-      process.env.ANCHOR_PROVIDER_URL?.includes("devnet");
+    // Determine network: use transfers on devnet (skip airdrop requests)
+    const isLocalnet =
+      process.env.ANCHOR_PROVIDER_URL?.includes("localhost") ||
+      process.env.ANCHOR_PROVIDER_URL?.includes("127.0.0.1") ||
+      (!process.env.ANCHOR_PROVIDER_URL && program.provider.connection.rpcEndpoint.includes("localhost")) ||
+      (!process.env.ANCHOR_PROVIDER_URL && program.provider.connection.rpcEndpoint.includes("127.0.0.1"));
 
+    const isDevnet = 
+      process.env.ANCHOR_PROVIDER_URL?.includes("devnet") ||
+      (!process.env.ANCHOR_PROVIDER_URL && program.provider.connection.rpcEndpoint.includes("devnet"));
+
+    // On devnet: use transfers from wallet - accounts are manually funded
+    // On localnet: use transfers
+    const useTransfers = process.env.USE_TRANSFERS === "true" || isLocalnet || isDevnet;
+
+    // Use transfers from provider wallet (works on both localnet and devnet)
     if (useTransfers && program.provider.wallet) {
       try {
-        // Use transfer from provider wallet instead of airdrop (avoids rate limiting)
+        // Use transfer from provider wallet instead of requesting airdrops
         const transferInstruction = anchor.web3.SystemProgram.transfer({
           fromPubkey: program.provider.wallet.publicKey,
           toPubkey: publicKey,
@@ -1945,11 +1955,16 @@ describe("landlocked", () => {
           transferInstruction
         );
 
-        // Use Anchor's sendAndConfirm which handles the wallet properly
         await program.provider.sendAndConfirm(transaction);
         return; // Success
       } catch (error: any) {
-        // If transfer fails (e.g., insufficient funds), fall back to airdrop
+        // On devnet: don't fall back to airdrops, just throw error
+        if (isDevnet) {
+          throw new Error(
+            `Insufficient balance for ${publicKey.toString()}. Required: ${amount} lamports, but only has ${balance} lamports. Please fund manually or ensure wallet has sufficient balance.`
+          );
+        }
+        // On localnet: fall back to airdrop if transfer fails
         console.log(
           `Transfer failed for ${publicKey.toString()}, falling back to airdrop: ${
             error.message
@@ -1958,17 +1973,9 @@ describe("landlocked", () => {
       }
     }
 
-    // Fall back option: airdrop tokens (or use if USE_TRANSFERS is not set)
-    // retry 5 times
-    let lastError: Error | null = null;
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
+    // On localnet only: use airdrops
+    if (isLocalnet) {
       try {
-        // Add a small delay between retries (exponential backoff)
-        if (attempt > 0) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-
         const sig = await program.provider.connection.requestAirdrop(
           publicKey,
           amount
@@ -1976,31 +1983,15 @@ describe("landlocked", () => {
         await program.provider.connection.confirmTransaction(sig, "confirmed");
         return; // Success
       } catch (error: any) {
-        lastError = error;
-        // If it's a rate limit or internal error, retry
-        if (
-          error.message?.includes("Internal error") ||
-          error.message?.includes("429") ||
-          error.message?.includes("rate limit") ||
-          error.message?.includes("Too Many Requests")
-        ) {
-          console.log(
-            `Airdrop attempt ${
-              attempt + 1
-            }/${maxRetries} failed for ${publicKey.toString()}, retrying...`
-          );
-          continue;
-        }
-        // For other errors, throw immediately
-        throw error;
+        throw new Error(
+          `Failed to airdrop ${amount} lamports to ${publicKey.toString()} on localnet: ${error.message}`
+        );
       }
     }
 
-    // If all retries failed, throw the last error
+    // Should not reach here - devnet uses transfers, localnet uses airdrops
     throw new Error(
-      `Failed to airdrop ${amount} lamports to ${publicKey.toString()} after ${maxRetries} attempts: ${
-        lastError?.message
-      }`
+      `Unable to fund ${publicKey.toString()}. Balance: ${balance} lamports, Required: ${amount} lamports`
     );
   };
 
