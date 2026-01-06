@@ -5,11 +5,11 @@ package_manager = "yarn"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-landlocked = "4AYNJr9c5E2MgtKd2RGsSdSRfEcLfNWm2og83MeFchYv"
-
 [programs.devnet]
-landlocked = "4AYNJr9c5E2MgtKd2RGsSdSRfEcLfNWm2og83MeFchYv"
+landlocked = "D9xrYMaRLyPZQj9C1FKTiuz2NwAPDGmpWw9CmE8AAQ5G"
+
+[programs.localnet]
+landlocked = "D9xrYMaRLyPZQj9C1FKTiuz2NwAPDGmpWw9CmE8AAQ5G"
 
 [registry]
 url = "https://api.apr.dev"
