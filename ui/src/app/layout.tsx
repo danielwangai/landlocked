@@ -2,6 +2,7 @@
 
 import "./globals.css";
 import Header from "../components/Header";
+import Sidebar from "../components/Sidebar";
 import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer } from "react-toastify";
 import { ReactQueryProvider } from "./root-query-provider";
@@ -18,12 +19,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-white">
         <ReactQueryProvider>
           <AppWalletProvider>
-            <Header />
-            <main className="mx-auto min-h-screen bg-gray-100">
-              <div className=" h-24" />
-              {children}
-              <div className=" h-24" />
-            </main>
+            <div className="flex min-h-screen">
+              {/* Sidebar */}
+              <Sidebar />
+
+              {/* Main Content Area */}
+              <div className="flex-1 ml-64">
+                {/* Header */}
+                <Header />
+
+                {/* Page Content */}
+                <main className="pt-16 min-h-screen bg-gray-50">
+                  <div className="p-6">{children}</div>
+                </main>
+              </div>
+            </div>
 
             <ToastContainer
               position="bottom-center"

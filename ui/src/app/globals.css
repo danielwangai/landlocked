@@ -24,3 +24,29 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Custom WalletMultiButton Styles */
+.wallet-adapter-button {
+  background-color: #a36143 !important; /* green-500 */
+  color: white !important;
+  border-radius: 0.5rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s !important;
+}
+
+.wallet-adapter-button:hover {
+  background-color: #ffffff !important; /* green-600 */
+  transform: translateY(-1px);
+}
+
+.wallet-adapter-button:not([disabled]):hover {
+  background-color: #aa7a64 !important;
+}
+
+.wallet-adapter-button-trigger {
+  background-color: #a36143 !important;
+}
+
+.wallet-adapter-button-trigger:hover {
+  background-color: #e9e100 !important;
+}
