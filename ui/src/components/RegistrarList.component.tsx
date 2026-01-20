@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { CircleOff, MoreHorizontal, Trash2 } from "lucide-react";
+import { useLoading } from "@/hooks/useLoading";
 
 export default function RegistrarListComponent() {
   const { publicKey, signTransaction, sendTransaction } = useWallet();
@@ -24,23 +25,41 @@ export default function RegistrarListComponent() {
     return new RegistrarService(program as Program<Landlocked>);
   }, [program]);
   const [registrars, setRegistrars] = useState<Registrar[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { isLoading, startLoading, stopLoading } = useLoading("registrars");
 
   useEffect(() => {
-    if (registrarService && publicKey) {
-      setLoading(true);
-      registrarService
-        .getRegistrars()
-        .then((registrars: Registrar[]) => {
-          setRegistrars(registrars);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      setLoading(false);
+    if (!publicKey || !registrarService) {
+      setRegistrars([]);
+      stopLoading();
+      return;
     }
-  }, [registrarService, publicKey]);
+
+    let cancelled = false;
+    startLoading();
+
+    registrarService
+      .getRegistrars()
+      .then((registrars: Registrar[]) => {
+        if (!cancelled) {
+          setRegistrars(registrars);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error("Error fetching registrars:", error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          stopLoading();
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      stopLoading();
+    };
+  }, [registrarService, publicKey, startLoading, stopLoading]);
 
   const handleDelete = (registrar: Registrar) => {
     // TODO: Implement delete functionality
@@ -106,7 +125,7 @@ export default function RegistrarListComponent() {
       columns={columns}
       caption="A list of registrars"
       keyExtractor={(row) => row.authority.toString()}
-      loading={loading}
+      loading={isLoading}
     />
   );
 }

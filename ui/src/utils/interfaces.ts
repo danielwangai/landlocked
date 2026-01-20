@@ -1,8 +1,13 @@
 import { PublicKey } from "@solana/web3.js";
 
+export interface LoadingState {
+  [key: string]: boolean;
+}
+
 export interface GlobalState {
   titleDeed: TitleDeed | null;
   titleDeeds: TitleDeed[];
+  loading: LoadingState;
 }
 
 export interface ProtocolState {
