@@ -1,9 +1,10 @@
 import { getProvider, RegistrarService } from "@/services/blockchain";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Program } from "@coral-xyz/anchor";
 import { Landlocked } from "../../../target/types/landlocked";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Registrar } from "@/utils/interfaces";
+import { Registrar, SerializedRegistrar } from "@/utils/interfaces";
+import { PublicKey } from "@solana/web3.js";
 import DataTable, { Column } from "./DataTable";
 import {
   DropdownMenu,
@@ -12,7 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { CircleOff, MoreHorizontal, Trash2 } from "lucide-react";
-import { useLoading } from "@/hooks/useLoading";
+import { useAppDispatch } from "@/store/hooks";
+import { fetchRegistrars } from "@/store/thunks";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store";
 
 export default function RegistrarListComponent() {
   const { publicKey, signTransaction, sendTransaction } = useWallet();
@@ -20,46 +24,37 @@ export default function RegistrarListComponent() {
     () => getProvider(publicKey, signTransaction, sendTransaction),
     [publicKey, signTransaction, sendTransaction]
   );
+  const dispatch = useAppDispatch();
   const registrarService = useMemo(() => {
     if (!program) return null;
     return new RegistrarService(program as Program<Landlocked>);
   }, [program]);
-  const [registrars, setRegistrars] = useState<Registrar[]>([]);
-  const { isLoading, startLoading, stopLoading } = useLoading("registrars");
+  const serializedRegistrars = useSelector<RootState, SerializedRegistrar[]>((state) => {
+    return (state as any).globalStates.registrars;
+  });
+
+  // Convert serialized registrars back to Registrar format with PublicKey objects
+  const registrars: Registrar[] = useMemo(
+    () =>
+      serializedRegistrars.map((r) => ({
+        ...r,
+        authority: new PublicKey(r.authority),
+        addedBy: new PublicKey(r.addedBy),
+      })),
+    [serializedRegistrars]
+  );
+
+  const isLoading = useSelector<RootState, boolean>((state) => {
+    return (state as any).globalStates.isLoading;
+  });
 
   useEffect(() => {
     if (!publicKey || !registrarService) {
-      setRegistrars([]);
-      stopLoading();
       return;
     }
 
-    let cancelled = false;
-    startLoading();
-
-    registrarService
-      .getRegistrars()
-      .then((registrars: Registrar[]) => {
-        if (!cancelled) {
-          setRegistrars(registrars);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.error("Error fetching registrars:", error);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          stopLoading();
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      stopLoading();
-    };
-  }, [registrarService, publicKey, startLoading, stopLoading]);
+    dispatch(fetchRegistrars({ registrarService }));
+  }, [registrarService, publicKey, dispatch]);
 
   const handleDelete = (registrar: Registrar) => {
     // TODO: Implement delete functionality

@@ -3,5 +3,6 @@ import { GlobalState } from "../utils/interfaces";
 export const globalState: GlobalState = {
   titleDeed: null,
   titleDeeds: [],
-  loading: {},
+  registrars: [],
+  isLoading: false,
 };

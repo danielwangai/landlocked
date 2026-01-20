@@ -1,13 +1,10 @@
 import { PublicKey } from "@solana/web3.js";
 
-export interface LoadingState {
-  [key: string]: boolean;
-}
-
 export interface GlobalState {
   titleDeed: TitleDeed | null;
   titleDeeds: TitleDeed[];
-  loading: LoadingState;
+  registrars: SerializedRegistrar[];
+  isLoading: boolean;
 }
 
 export interface ProtocolState {
@@ -30,6 +27,17 @@ export interface Registrar {
   idNumber: string;
   authority: PublicKey;
   addedBy: PublicKey;
+  isActive: boolean;
+  bump: number;
+}
+
+// Serialized version for Redux state (PublicKey as strings)
+export interface SerializedRegistrar {
+  firstName: string;
+  lastName: string;
+  idNumber: string;
+  authority: string;
+  addedBy: string;
   isActive: boolean;
   bump: number;
 }
