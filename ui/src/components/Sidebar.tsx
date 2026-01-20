@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useMemo, useState } from "react";
-import { FaMapMarkerAlt, FaFileAlt, FaUsers, FaCog } from "react-icons/fa";
+import { FaFileAlt, FaUsers } from "react-icons/fa";
 import { FaPerson } from "react-icons/fa6";
 import { getProvider } from "@/services/blockchain";
 import { Program } from "@coral-xyz/anchor";
@@ -98,17 +99,17 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col">
-      {/* Top Section */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center gap-2 mb-2">
-          <FaMapMarkerAlt className="text-green-600 text-xl" />
+    <aside className="fixed left-0 top-0 h-full w-64 bg-[#ebdbc8] border-r border/brown flex flex-col">
+      {/* Top Section - matches header height */}
+      <div className="px-6 py-8 flex items-center">
+        <div className="flex items-center gap-2">
+          <Image src="/logo.svg" alt="LandLocked Logo" width={24} height={24} />
           <h1 className="text-xl font-bold text-gray-900">LandLocked</h1>
         </div>
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 overflow-y-auto py-4">
+      <nav className="flex-1 overflow-y-auto">
         {menuItems.map((group, groupIndex) => (
           <div key={groupIndex} className="mb-6">
             {group.section && (
@@ -125,8 +126,8 @@ export default function Sidebar() {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`flex items-center gap-3 px-6 py-3 text-sm font-medium transition-colors ${
-                        active ? "bg-green-600 text-white" : "text-gray-700 hover:bg-gray-50"
+                      className={`flex items-center gap-3 px-6 h-[5em] text-sm font-medium transition-colors text-lg ${
+                        active ? "bg-[#a36143] text-white" : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
                       <Icon className="text-lg" />

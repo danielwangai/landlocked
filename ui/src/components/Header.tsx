@@ -12,7 +12,7 @@ export default function Header() {
   }, []);
 
   return (
-    <div className="bg-[#ebdbc8] shadow-md px-6 py-8 flex justify-between">
+    <div className="bg-[#ebdbc8] shadow-md border-b border-gray-300 px-6 py-5.5 flex justify-between">
       <div></div>
       {isMounted && (
         <div className="hidden md:inline-block">
