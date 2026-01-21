@@ -2,12 +2,12 @@
 
 import { useWallet } from "@solana/wallet-adapter-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { getProvider } from "@/services/blockchain";
 import { Program } from "@coral-xyz/anchor";
 import { Landlocked } from "../../../target/types/landlocked";
-import { getUserType } from "@/utils/helpers";
-import { checkRouteAccess, UserRole } from "@/utils/routeProtection";
+import { checkRouteAccess } from "@/utils/routeProtection";
+import { useUserRole } from "@/contexts/UserRoleContext";
 import { LoaderIcon } from "lucide-react";
 
 interface ProtectedRouteProps {
@@ -18,35 +18,13 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { publicKey, signTransaction, sendTransaction } = useWallet();
   const pathname = usePathname();
   const router = useRouter();
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [isChecking, setIsChecking] = useState(true);
+  const { userRole, isLoading: isChecking } = useUserRole();
   const isLoggedIn = !!publicKey;
 
   const program = useMemo(
     () => getProvider(publicKey, signTransaction, sendTransaction),
     [publicKey, signTransaction, sendTransaction]
   );
-
-  // Fetch user role when logged in
-  useEffect(() => {
-    (async () => {
-      if (!isLoggedIn || !program || !publicKey) {
-        setUserRole(null);
-        setIsChecking(false);
-        return;
-      }
-
-      try {
-        const role = await getUserType(program as Program<Landlocked>, publicKey);
-        setUserRole(role as UserRole);
-      } catch (error) {
-        console.error("Error fetching user role:", error);
-        setUserRole(null);
-      } finally {
-        setIsChecking(false);
-      }
-    })();
-  }, [isLoggedIn, program, publicKey]);
 
   // Check route access
   useEffect(() => {

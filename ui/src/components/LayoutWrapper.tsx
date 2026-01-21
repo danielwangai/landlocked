@@ -1,19 +1,25 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useUserRole } from "@/contexts/UserRoleContext";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const { publicKey } = useWallet();
+  const { userRole } = useUserRole();
   const isLoggedIn = !!publicKey;
 
-  // Always show header, but only show sidebar if logged in
-  if (!isLoggedIn) {
+  // Determine if sidebar should be shown
+  // Show sidebar only if user is logged in AND has an account (admin/registrar/user)
+  const shouldShowSidebar = isLoggedIn && userRole !== null;
+
+  // Always show header
+  if (!shouldShowSidebar) {
     return (
       <div className="flex min-h-screen">
         {/* Main Content Area - No Sidebar */}
-        <div className="flex-1 bg-red">
+        <div className="flex-1 bg-[#efe7de]">
           {/* Header */}
           <Header />
 

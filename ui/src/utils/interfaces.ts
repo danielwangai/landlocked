@@ -50,6 +50,14 @@ export interface User {
   authority: PublicKey;
 }
 
+export interface SerializedUser {
+  firstName: string;
+  lastName: string;
+  idNumber: string;
+  phoneNumber: string;
+  authority: string;
+}
+
 export interface TitleDeed {
   owner: User;
   authority: PublicKey;
