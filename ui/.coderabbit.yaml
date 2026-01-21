@@ -1,0 +1,83 @@
+# CodeRabbit configuration for Lishwa v1
+# Purpose: focus on code quality, readability, and maintainability.
+# (Linting & tests are handled by CI separately)
+
+version: 1
+
+pull_requests:
+  require_description: true
+  max_lines_changed: 800
+  max_files_changed: 25
+  title:
+    required: true
+    max_length: 72
+  require_issue_reference: true
+
+reviews:
+  required_approvals: 1
+
+quality:
+  # Function and file size limits
+  max_function_length: 50
+  max_file_length: 300
+  
+  # Complexity management
+  cyclomatic_complexity:
+    max: 6
+    warn_threshold: 4
+  
+  # Variable naming
+  variable_naming:
+    min_length: 3
+    require_descriptive: true
+    disallow_abbreviations: true
+  
+  # Code quality checks
+  detect_unused_variables: true
+  detect_dead_code: true
+  detect_magic_numbers: true
+  detect_duplicate_code: true
+  
+  # No console.log in production
+  disallow_console_logs: true
+  disallow_todos: true
+
+security:
+  # Security best practices
+  detect_hardcoded_secrets: true
+  detect_sql_injection: true
+  detect_xss_vulnerabilities: true
+  detect_dangerous_jsx: true
+  detect_missing_key_props: true
+
+performance:
+  # Performance optimization
+  detect_inefficient_loops: true
+  detect_large_bundle_imports: true
+  detect_missing_memoization: true
+  detect_unnecessary_rerenders: true
+  detect_missing_dependency_arrays: true
+
+documentation:
+  # Documentation requirements
+  require_function_comments: true
+  require_complex_logic_comments: true
+  min_comment_density: 0.1
+  require_type_annotations: true
+  detect_any_types: true
+
+organization:
+  # Code organization
+  require_sorted_imports: true
+  require_grouped_imports: true
+  require_index_files: true
+  detect_circular_dependencies: true
+
+conventions:
+  commit_messages:
+    conventional: true
+    max_length: 100
+
+notifications:
+  slack:
+    enabled: false
