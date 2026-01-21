@@ -1,18 +1,15 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
-import { usePathname } from "next/navigation";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const { publicKey } = useWallet();
-  const pathname = usePathname();
   const isLoggedIn = !!publicKey;
-  const isLandingPage = pathname === "/";
 
-  // Don't show sidebar/header on landing page or if not logged in
-  if (!isLoggedIn || isLandingPage) {
+  // Only show sidebar/header if user is logged in
+  if (!isLoggedIn) {
     return <>{children}</>;
   }
 
@@ -34,4 +31,3 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
     </div>
   );
 }
-

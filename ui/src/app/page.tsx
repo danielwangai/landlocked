@@ -3,10 +3,40 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 export default function Home() {
+  const { publicKey } = useWallet();
+  const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+  const isLoggedIn = !!publicKey;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      // Redirect to a default page when logged in, or you can show different content
+      router.push("/");
+    }
+  }, [isLoggedIn, router]);
+
+  // Don't show landing page content if logged in
+  if (isLoggedIn) {
+    return null;
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#efe7de]">
+    <div className="flex min-h-screen items-center justify-center bg-[#efe7de] relative">
+      {isMounted && (
+        <div className="absolute top-6 right-6">
+          <WalletMultiButton />
+        </div>
+      )}
       <main className="flex flex-col items-center justify-center gap-8 px-6 text-center">
         <div className="flex flex-col items-center gap-6">
           <Image
