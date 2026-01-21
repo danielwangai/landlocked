@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { globalState as GlobalState } from "./globalState";
 import { actions as GlobalActions } from "./actions";
-import { fetchRegistrars } from "./thunks";
+import { fetchRegistrars, addRegistrar } from "./thunks";
 
 export const globalSlices = createSlice({
   name: "global",
@@ -18,7 +18,12 @@ export const globalSlices = createSlice({
       })
       .addCase(fetchRegistrars.rejected, (state) => {
         state.isLoading = false;
-      });
+      })
+      .addCase(addRegistrar.pending, () => {})
+      .addCase(addRegistrar.fulfilled, (state, action) => {
+        state.registrars.push(action.payload);
+      })
+      .addCase(addRegistrar.rejected, () => {});
   },
 });
 
