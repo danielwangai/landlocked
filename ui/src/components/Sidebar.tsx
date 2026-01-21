@@ -57,7 +57,7 @@ export default function Sidebar() {
     () => [
       {
         label: "Registrar Management",
-        href: "/registraars",
+        href: "/registrars",
         icon: FaPerson,
         roles: ["admin"] as UserRole[],
       },
