@@ -2,17 +2,7 @@ import { Landlocked } from "../../../target/types/landlocked";
 import { Program } from "@coral-xyz/anchor";
 import { getProtocolState, getRegistrarPDA } from "@/services/blockchain";
 import { PublicKey } from "@solana/web3.js";
-
-export const getClusterURL = (cluster: string): string => {
-  const clusterUrls: any = {
-    "mainnet-beta": "https://api.mainnet-beta.solana.com",
-    testnet: "https://api.testnet.solana.com",
-    devnet: "https://api.devnet.solana.com",
-    localnet: "http://127.0.0.1:8899",
-  };
-
-  return clusterUrls[cluster];
-};
+import { getClusterURL } from "./constants";
 
 export const getCluster = (cluster: string): string => {
   const clusters: any = {

@@ -2,12 +2,11 @@ import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import { Connection, PublicKey, SystemProgram, TransactionSignature } from "@solana/web3.js";
 import { Landlocked } from "../../../target/types/landlocked";
 import idl from "../../../target/idl/landlocked.json";
-import { Admin, ProtocolState, Registrar, TitleDeed } from "../utils/interfaces";
-import { globalActions } from "../store/globalSlices";
-import { getClusterURL } from "../utils/helpers";
+import { ProtocolState, Registrar, TitleDeed } from "../utils/interfaces";
+import { getClusterURL } from "../utils/constants";
 import * as crypto from "crypto";
 
-const CLUSTER: string = process.env.NEXT_PUBLIC_CLUSTER || "localhost";
+const CLUSTER: string = process.env.NEXT_PUBLIC_CLUSTER as string;
 const RPC_URL: string = getClusterURL(CLUSTER);
 
 export const getProvider = (
