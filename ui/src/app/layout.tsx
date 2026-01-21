@@ -7,6 +7,7 @@ import { ReactQueryProvider } from "./root-query-provider";
 import AppWalletProvider from "../components/AppWalletProvider";
 import ReduxProvider from "../components/ReduxProvider";
 import LayoutWrapper from "../components/LayoutWrapper";
+import ProtectedRoute from "../components/ProtectedRoute";
 import { Quicksand } from "next/font/google";
 
 const quicksand = Quicksand({
@@ -23,11 +24,13 @@ const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${quicksand.variable} bg-white font-sans`}>
+      <body className={`${quicksand.variable} font-sans`}>
         <ReduxProvider>
           <ReactQueryProvider>
             <AppWalletProvider>
-              <LayoutWrapper>{children}</LayoutWrapper>
+              <ProtectedRoute>
+                <LayoutWrapper>{children}</LayoutWrapper>
+              </ProtectedRoute>
               <ToastContainer
                 position="bottom-center"
                 autoClose={5000}

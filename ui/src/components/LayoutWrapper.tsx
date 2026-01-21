@@ -8,9 +8,22 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const { publicKey } = useWallet();
   const isLoggedIn = !!publicKey;
 
-  // Only show sidebar/header if user is logged in
+  // Always show header, but only show sidebar if logged in
   if (!isLoggedIn) {
-    return <>{children}</>;
+    return (
+      <div className="flex min-h-screen">
+        {/* Main Content Area - No Sidebar */}
+        <div className="flex-1 bg-red">
+          {/* Header */}
+          <Header />
+
+          {/* Page Content */}
+          <main className="pt-16 min-h-screen bg-[#efe7de]">
+            <div className="p-6">{children}</div>
+          </main>
+        </div>
+      </div>
+    );
   }
 
   return (
