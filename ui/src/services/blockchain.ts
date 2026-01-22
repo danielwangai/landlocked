@@ -3,11 +3,10 @@ import { Connection, PublicKey, SystemProgram, TransactionSignature } from "@sol
 import { Landlocked } from "../../../target/types/landlocked";
 import idl from "../../../target/idl/landlocked.json";
 import { ProtocolState, Registrar, TitleDeed, User } from "../utils/interfaces";
-import { getClusterURL } from "../utils/constants";
+import { getClusterURL, NETWORK } from "../utils/constants";
 import * as crypto from "crypto";
 
-const CLUSTER: string = process.env.NEXT_PUBLIC_CLUSTER as string;
-const RPC_URL: string = getClusterURL(CLUSTER);
+const RPC_URL: string = getClusterURL(NETWORK);
 
 export const getProvider = (
   publicKey: PublicKey | null,

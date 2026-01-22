@@ -25,7 +25,15 @@ export const routeConfigs: RouteConfig[] = [
     path: "/",
     access: {
       requiresAuth: false,
-      redirectTo: "/", // Redirect logged-in users away from landing
+      redirectTo: "/dashboard", // Redirect authenticated users to dashboard
+    },
+  },
+  {
+    path: "/dashboard",
+    access: {
+      requiresAuth: true,
+      // No allowedRoles specified - any authenticated user can access
+      redirectTo: "/", // Redirect unauthenticated users to landing
     },
   },
   {
@@ -34,7 +42,7 @@ export const routeConfigs: RouteConfig[] = [
       requiresAuth: false,
       // Allow access even if wallet is connected but user doesn't have an account yet
       // Only redirect if user already has an account (admin/registrar/user)
-      redirectTo: "/title-deeds", // Redirect only if user has an account
+      redirectTo: "/dashboard", // Redirect only if user has an account
     },
   },
   {
@@ -42,7 +50,7 @@ export const routeConfigs: RouteConfig[] = [
     access: {
       requiresAuth: true,
       allowedRoles: ["admin"],
-      redirectTo: "/",
+      redirectTo: "/dashboard",
     },
   },
   {
@@ -50,7 +58,7 @@ export const routeConfigs: RouteConfig[] = [
     access: {
       requiresAuth: true,
       allowedRoles: ["admin", "registrar", "user"],
-      redirectTo: "/",
+      redirectTo: "/dashboard",
     },
   },
   {
@@ -58,7 +66,7 @@ export const routeConfigs: RouteConfig[] = [
     access: {
       requiresAuth: true,
       allowedRoles: ["admin", "registrar"],
-      redirectTo: "/",
+      redirectTo: "/dashboard",
     },
   },
   {
@@ -66,7 +74,7 @@ export const routeConfigs: RouteConfig[] = [
     access: {
       requiresAuth: true,
       allowedRoles: ["user"],
-      redirectTo: "/",
+      redirectTo: "/dashboard",
     },
   },
   {
@@ -74,7 +82,7 @@ export const routeConfigs: RouteConfig[] = [
     access: {
       requiresAuth: true,
       allowedRoles: ["user"],
-      redirectTo: "/",
+      redirectTo: "/dashboard",
     },
   },
 ];
@@ -106,7 +114,7 @@ export const checkRouteAccess = async (
 
   // Check if authentication is required
   if (rule.requiresAuth && !isLoggedIn) {
-    return { hasAccess: false, redirectTo: rule.redirectTo || "/" };
+    return { hasAccess: false, redirectTo: rule.redirectTo || "/dashboard" };
   }
 
   // Special handling for create-account page: allow access even if logged in, but only if user doesn't have an account yet
@@ -119,7 +127,7 @@ export const checkRouteAccess = async (
         try {
           const role = await getUserType(program, publicKey);
           if (role && (role === "admin" || role === "registrar" || role === "user")) {
-            return { hasAccess: false, redirectTo: rule.redirectTo || "/title-deeds" };
+            return { hasAccess: false, redirectTo: rule.redirectTo || "/dashboard" };
           }
         } catch (error) {
           // User doesn't have an account yet - allow access
@@ -128,7 +136,7 @@ export const checkRouteAccess = async (
       }
       // If user has a role, redirect them away
       if (userRole && (userRole === "admin" || userRole === "registrar" || userRole === "user")) {
-        return { hasAccess: false, redirectTo: rule.redirectTo || "/title-deeds" };
+        return { hasAccess: false, redirectTo: rule.redirectTo || "/dashboard" };
       }
       // User is logged in but doesn't have an account yet - allow access
       return { hasAccess: true };
@@ -138,8 +146,14 @@ export const checkRouteAccess = async (
   }
 
   // If logged in but shouldn't be on this page (e.g., landing page)
+  // Only redirect if user has an account (has a role)
   if (!rule.requiresAuth && isLoggedIn && pathname !== "/create-account") {
-    return { hasAccess: false, redirectTo: rule.redirectTo || "/title-deeds" };
+    // If user has a role, redirect them away from landing page to dashboard
+    if (userRole) {
+      return { hasAccess: false, redirectTo: rule.redirectTo || "/dashboard" };
+    }
+    // User is logged in but doesn't have an account yet - allow access to landing page
+    return { hasAccess: true };
   }
 
   // Check role-based access
@@ -153,21 +167,22 @@ export const checkRouteAccess = async (
           if (role && rule.allowedRoles.includes(role as UserRole)) {
             return { hasAccess: true };
           }
-          // If role is null (no account) or doesn't match, deny access
-          return { hasAccess: false, redirectTo: rule.redirectTo || "/" };
+          // If role is null (no account) or doesn't match, deny access and redirect to dashboard
+          return { hasAccess: false, redirectTo: "/dashboard" };
         } catch (error) {
           console.error("Error checking user role:", error);
-          // If we can't determine role, deny access
-          return { hasAccess: false, redirectTo: rule.redirectTo || "/" };
+          // If we can't determine role, deny access and redirect to dashboard
+          return { hasAccess: false, redirectTo: "/dashboard" };
         }
       }
-      // If we can't determine role (no program/publicKey), deny access
-      return { hasAccess: false, redirectTo: rule.redirectTo || "/" };
+      // If we can't determine role (no program/publicKey), deny access and redirect to dashboard
+      return { hasAccess: false, redirectTo: "/dashboard" };
     }
 
     // User role is determined - check if it matches allowed roles
     if (!rule.allowedRoles.includes(userRole)) {
-      return { hasAccess: false, redirectTo: rule.redirectTo || "/" };
+      // User doesn't have the required role - redirect to dashboard
+      return { hasAccess: false, redirectTo: "/dashboard" };
     }
   }
 

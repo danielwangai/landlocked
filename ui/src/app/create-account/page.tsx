@@ -54,7 +54,7 @@ export default function CreateAccountPage() {
       setIsSubmitting(true);
       const result = await dispatch(
         createUserAccount({
-          userService: userService,
+          userService: userService as UserService,
           firstName: firstName,
           lastName: lastName,
           idNumber: idNumber,
@@ -73,7 +73,7 @@ export default function CreateAccountPage() {
         setPhoneNumber("");
         // Redirect to dashboard after successful account creation
         setTimeout(() => {
-          router.push("/title-deeds");
+          router.push("/dashboard");
         }, 1000); // Small delay to show success message
       } else if (createUserAccount.rejected.match(result)) {
         const errorMessage = extractOnchainErrorMessage(
@@ -97,7 +97,7 @@ export default function CreateAccountPage() {
   // Redirect if user already has an account
   useEffect(() => {
     if (userRole) {
-      router.push("/title-deeds");
+      router.push("/dashboard");
     }
   }, [userRole, router]);
 
