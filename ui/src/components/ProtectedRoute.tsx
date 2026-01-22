@@ -28,11 +28,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     [publicKey, signTransaction, sendTransaction]
   );
 
-  // Reset checking state when pathname changes
+  // Reset checking state when pathname, auth state, or role changes
   useEffect(() => {
     setIsChecking(true);
     setHasAccess(false);
-  }, [pathname]);
+  }, [pathname, isLoggedIn, isUserRoleLoading, userRole]);
 
   // Set isChecking to false when ready to check
   useEffect(() => {
@@ -42,8 +42,9 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       return;
     }
 
-    // Special case: Dashboard for authenticated users - grant immediate access
-    if (pathname === "/dashboard" && isLoggedIn && !isUserRoleLoading) {
+    // Special case: Dashboard for authenticated users with a role - grant immediate access
+    // Only short-circuit if user has a role (admin/registrar/user), otherwise fall through to checkRouteAccess
+    if (pathname === "/dashboard" && isLoggedIn && !isUserRoleLoading && userRole) {
       setIsChecking(false);
       setHasAccess(true);
       return;
@@ -51,7 +52,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
     // Ready to check
     setIsChecking(false);
-  }, [pathname, isLoggedIn, isUserRoleLoading]);
+  }, [pathname, isLoggedIn, isUserRoleLoading, userRole]);
 
   // Check route access
   useEffect(() => {
@@ -69,14 +70,17 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
       if (cancelled) return;
 
-      if (!access.hasAccess && access.redirectTo) {
-        // Don't redirect if already on target (prevents loops)
-        if (pathname !== access.redirectTo) {
-          router.push(access.redirectTo);
+      if (!access.hasAccess) {
+        // Access denied - handle redirect if provided
+        if (access.redirectTo && pathname !== access.redirectTo) {
+          if (!cancelled) router.push(access.redirectTo);
         }
+        // Always set hasAccess to false when access is denied
         if (!cancelled) setHasAccess(false);
         return;
       }
+
+      // Access granted
       if (!cancelled) setHasAccess(true);
     })();
 

@@ -122,7 +122,6 @@ export const checkRouteAccess = async (
     // If user is logged in and has a role (admin/registrar/user), redirect them away
     if (isLoggedIn) {
       // Try to fetch role if not already determined
-      console.log("userRole: ", userRole);
       if (!userRole && program && publicKey) {
         try {
           const role = await getUserType(program, publicKey);

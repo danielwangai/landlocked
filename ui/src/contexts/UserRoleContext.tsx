@@ -30,6 +30,7 @@ export function UserRoleProvider({ children }: UserRoleProviderProps) {
   const { publicKey, signTransaction, sendTransaction } = useWallet();
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [cachedIdNumber, setCachedIdNumber] = useState<string | undefined>(undefined);
 
   const program = useMemo(
     () => getProvider(publicKey, signTransaction, sendTransaction),
@@ -39,16 +40,24 @@ export function UserRoleProvider({ children }: UserRoleProviderProps) {
   const isLoggedIn = !!publicKey;
 
   // Function to refresh user role (can be called with idNumber after account creation)
-  const refreshUserRole = async () => {
+  const refreshUserRole = async (idNumber?: string) => {
     if (!isLoggedIn || !program || !publicKey) {
       setUserRole(null);
+      setCachedIdNumber(undefined);
       return;
     }
 
     setIsLoading(true);
     try {
-      const role = await getUserType(program as Program<Landlocked>, publicKey);
+      // Use provided idNumber, or fall back to cached idNumber
+      const idNumberToUse = idNumber || cachedIdNumber;
+      const role = await getUserType(program as Program<Landlocked>, publicKey, idNumberToUse);
       setUserRole(role as UserRole);
+
+      // If idNumber was provided and we successfully got a role, cache it for future use
+      if (idNumber && role) {
+        setCachedIdNumber(idNumber);
+      }
     } catch (error) {
       console.error("Error fetching user role:", error);
       setUserRole(null);
@@ -56,6 +65,11 @@ export function UserRoleProvider({ children }: UserRoleProviderProps) {
       setIsLoading(false);
     }
   };
+
+  // Clear cached idNumber whenever publicKey changes (including wallet switches)
+  useEffect(() => {
+    setCachedIdNumber(undefined);
+  }, [publicKey]);
 
   // Fetch user type when wallet connects
   useEffect(() => {

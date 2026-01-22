@@ -122,6 +122,7 @@ export default function CreateAccountPage() {
             First Name
           </label>
           <Input
+            id="first-name"
             type="text"
             placeholder="First Name"
             className="w-full py-7 my-4 border-gray-400"
@@ -133,6 +134,7 @@ export default function CreateAccountPage() {
             Last Name
           </label>
           <Input
+            id="last-name"
             type="text"
             placeholder="Last Name"
             className="w-full py-7 my-4 border-gray-400"
@@ -144,6 +146,7 @@ export default function CreateAccountPage() {
             ID Number
           </label>
           <Input
+            id="id-number"
             type="text"
             placeholder="ID Number"
             className="w-full py-7 my-4 border-gray-400"
@@ -155,6 +158,7 @@ export default function CreateAccountPage() {
             Phone Number
           </label>
           <Input
+            id="phone-number"
             type="text"
             placeholder="Phone Number"
             className="w-full py-7 my-4 border-gray-400"

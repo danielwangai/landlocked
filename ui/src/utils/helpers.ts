@@ -17,7 +17,7 @@ export const getCluster = (cluster: string): string => {
     "http://127.0.0.1:8899": "localnet",
   };
 
-  return clusters[getClusterURL(cluster)];
+  return clusters[getClusterURL(cluster)] ?? "devnet";
 };
 
 /**
@@ -101,11 +101,13 @@ export const extractOnchainErrorMessage = (
  * Get the user type based on the wallet address and onchain data
  * @param program - The program instance
  * @param publicKey - The public key of the user
+ * @param idNumber - Optional ID number to optimize user lookup
  * @returns The user type
  */
 export const getUserType = async (
   program: Program<Landlocked>,
-  publicKey: PublicKey
+  publicKey: PublicKey,
+  idNumber?: string
 ): Promise<"admin" | "registrar" | "user" | null> => {
   try {
     const protocolState = await getProtocolState(program);
