@@ -195,7 +195,7 @@ export default function RegistrarComponent() {
                     />
                   </div>
                 </div>
-                <DialogFooter className="flex flex-col justify-end gap-2">
+                <DialogFooter className="flex flex-row gap-2 mt-4">
                   <DialogClose asChild>
                     <Button
                       className="bg-[#f5f1ec] border-[#d3aa7b] text-[#a36143] rounded-[3px] text-md px-6 py-6"

@@ -2,13 +2,11 @@ import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import { Connection, PublicKey, SystemProgram, TransactionSignature } from "@solana/web3.js";
 import { Landlocked } from "../../../target/types/landlocked";
 import idl from "../../../target/idl/landlocked.json";
-import { Admin, ProtocolState, Registrar, TitleDeed } from "../utils/interfaces";
-import { globalActions } from "../store/globalSlices";
-import { getClusterURL } from "../utils/helpers";
+import { ProtocolState, Registrar, TitleDeed, User } from "../utils/interfaces";
+import { getClusterURL, NETWORK } from "../utils/constants";
 import * as crypto from "crypto";
 
-const CLUSTER: string = process.env.NEXT_PUBLIC_CLUSTER || "localhost";
-const RPC_URL: string = getClusterURL(CLUSTER);
+const RPC_URL: string = getClusterURL(NETWORK);
 
 export const getProvider = (
   publicKey: PublicKey | null,
@@ -117,6 +115,45 @@ export class RegistrarService {
       } as any)
       .rpc();
     return tx;
+  }
+}
+
+export class UserService {
+  private program: Program<Landlocked>;
+  private programId: PublicKey;
+
+  constructor(program: Program<Landlocked>) {
+    this.program = program;
+    this.programId = program.programId;
+  }
+
+  async createUserAccount(
+    firstName: string,
+    lastName: string,
+    idNumber: string,
+    phoneNumber: string,
+    userAuthority: PublicKey
+  ): Promise<TransactionSignature> {
+    const userPDA = getUserAddress(idNumber, userAuthority, this.programId);
+    const idNumberClaimPDA = getIdNumberClaimPDA(idNumber, this.programId);
+    const tx = await this.program.methods
+      .createUserAccount(firstName, lastName, idNumber, phoneNumber)
+      .accounts({
+        authority: userAuthority,
+        user: userPDA,
+        idNumberClaim: idNumberClaimPDA,
+        systemProgram: SystemProgram.programId,
+      } as any)
+      .rpc();
+    return tx;
+  }
+
+  async fetchUsers(): Promise<User[]> {
+    const users = await this.program.account.user.all();
+    return users.map((u) => {
+      const account = u.account as any;
+      return account as User;
+    });
   }
 }
 
@@ -239,6 +276,22 @@ export const getUserAddress = (
 
   return PublicKey.findProgramAddressSync(
     [Buffer.from("person"), idNumberSeed, authority.toBuffer()],
+    programId
+  )[0];
+};
+
+/**
+ * Get the PDA for a id number claim
+ * @param idNumber
+ * @param programId
+ * @returns
+ */
+export const getIdNumberClaimPDA = (idNumber: string, programId: PublicKey): PublicKey => {
+  const utf8Bytes = Buffer.from(idNumber, "utf-8");
+  const hash = crypto.createHash("sha256").update(utf8Bytes).digest();
+  const idNumberSeed = new Uint8Array(hash);
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("id_number_claim"), idNumberSeed],
     programId
   )[0];
 };

@@ -3,54 +3,30 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { FaFileAlt, FaUsers } from "react-icons/fa";
 import { FaPerson } from "react-icons/fa6";
-import { getProvider } from "@/services/blockchain";
-import { Program } from "@coral-xyz/anchor";
-import { Landlocked } from "../../../target/types/landlocked";
-import { getUserType } from "@/utils/helpers";
+import { useUserRole } from "@/contexts/UserRoleContext";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 type UserRole = "admin" | "registrar" | "user";
 
-interface UserRoleInfo {
-  isAdmin: boolean;
-  isRegistrar: boolean;
-  role: UserRole;
-}
-
 export default function Sidebar() {
-  const { publicKey, signTransaction, sendTransaction } = useWallet();
-  const program = useMemo(
-    () => getProvider(publicKey, signTransaction, sendTransaction),
-    [publicKey, signTransaction, sendTransaction]
-  );
   const pathname = usePathname();
-  const [userRoleInfo, setUserRoleInfo] = useState<UserRoleInfo>({
-    isAdmin: false,
-    isRegistrar: false,
-    role: "user",
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const { publicKey } = useWallet();
+  const { userRole, isLoading } = useUserRole();
 
-  useEffect(() => {
-    (async () => {
-      if (!publicKey) {
-        setUserRoleInfo({ isAdmin: false, isRegistrar: false, role: "user" });
-        setIsLoading(false);
-        return;
-      }
-
-      const role = await getUserType(program as Program<Landlocked>, publicKey);
-      setUserRoleInfo({
-        isAdmin: role === "admin",
-        isRegistrar: role === "registrar",
-        role: role as UserRole,
-      });
-      setIsLoading(false);
-    })();
-  }, [publicKey]);
+  // Convert userRole to UserRoleInfo format
+  const userRoleInfo = useMemo(() => {
+    if (!userRole) {
+      return { isAdmin: false, isRegistrar: false, role: "user" as UserRole };
+    }
+    return {
+      isAdmin: userRole === "admin",
+      isRegistrar: userRole === "registrar",
+      role: userRole as UserRole,
+    };
+  }, [userRole]);
 
   // Define all menu items with role requirements
   const allMenuItems = useMemo(

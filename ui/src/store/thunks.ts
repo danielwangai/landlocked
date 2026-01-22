@@ -1,7 +1,8 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { RegistrarService } from "@/services/blockchain";
-import { SerializedRegistrar } from "@/utils/interfaces";
+import { RegistrarService, UserService } from "@/services/blockchain";
+import { SerializedRegistrar, SerializedUser } from "@/utils/interfaces";
 import { PublicKey } from "@solana/web3.js";
+import { extractOnchainErrorMessage } from "@/utils/helpers";
 
 export const fetchRegistrars = createAsyncThunk<
   SerializedRegistrar[],
@@ -18,7 +19,7 @@ export const fetchRegistrars = createAsyncThunk<
     }));
     return serializedRegistrars;
   } catch (error: any) {
-    return rejectWithValue(error.message || "Failed to fetch registrars");
+    return rejectWithValue(extractOnchainErrorMessage(error, "Failed to fetch registrars"));
   }
 });
 
@@ -62,7 +63,69 @@ export const addRegistrar = createAsyncThunk<
 
       return serializedRegistrar;
     } catch (error: any) {
-      return rejectWithValue(error.message || "Failed to add registrar");
+      return rejectWithValue(extractOnchainErrorMessage(error, "Failed to add registrar"));
     }
   }
 );
+
+export const createUserAccount = createAsyncThunk<
+  SerializedUser,
+  {
+    userService: UserService;
+    firstName: string;
+    lastName: string;
+    idNumber: string;
+    phoneNumber: string;
+    walletAddress: string;
+  },
+  { rejectValue: string }
+>(
+  "users/createUserAccount",
+  async (
+    { userService, firstName, lastName, idNumber, phoneNumber, walletAddress },
+    { rejectWithValue }
+  ) => {
+    try {
+      const userAuthority = new PublicKey(walletAddress);
+      await userService.createUserAccount(
+        firstName,
+        lastName,
+        idNumber,
+        phoneNumber,
+        userAuthority
+      );
+
+      const serializedUser: SerializedUser = {
+        firstName,
+        lastName,
+        idNumber,
+        phoneNumber,
+        authority: userAuthority.toString(),
+      };
+
+      return serializedUser;
+    } catch (error: any) {
+      const errorMessage = extractOnchainErrorMessage(error, "Failed to create user account");
+      console.error("Create user account thunk error:", error);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+// fetch users
+export const fetchUsers = createAsyncThunk<
+  SerializedUser[],
+  { userService: UserService },
+  { rejectValue: string }
+>("users/fetchUsers", async ({ userService }, { rejectWithValue }) => {
+  try {
+    const users = await userService.fetchUsers();
+    const serializedUsers: SerializedUser[] = users.map((user) => ({
+      ...user,
+      authority: user.authority.toString(),
+    }));
+    return serializedUsers;
+  } catch (error: any) {
+    return rejectWithValue(extractOnchainErrorMessage(error, "Failed to fetch users"));
+  }
+});

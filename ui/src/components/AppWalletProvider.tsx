@@ -8,7 +8,7 @@ import { SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { ConnectionProvider } from "@solana/wallet-adapter-react";
 import { WalletProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { getClusterURL } from "@/utils/helpers";
+import { getClusterURL } from "@/utils/constants";
 
 export default function AppWalletProvider({ children }: { children: React.ReactNode }) {
   const endpoint = useMemo(() => {
